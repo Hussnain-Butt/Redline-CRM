@@ -40,7 +40,8 @@ const CallRecordings: React.FC<CallRecordingsProps> = ({ callLogs, onRefresh }) 
         const match = twilioUrl.match(/RE[a-f0-9]{32}/i);
         if (match) {
             const recordingSid = match[0];
-            return `${import.meta.env.VITE_APP_URL || 'http://localhost:3000'}/api/calls/recording/${recordingSid}`;
+            // VITE_APP_URL already includes /api
+            return `${import.meta.env.VITE_APP_URL || 'http://localhost:3000/api'}/calls/recording/${recordingSid}`;
         }
         return twilioUrl; // Fallback to original URL
     };
