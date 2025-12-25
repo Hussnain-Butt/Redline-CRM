@@ -35,7 +35,7 @@ git push -u origin main
 
 ### Step 4: MongoDB Database Add Karein
 1. Project mein **"+ New"** → **"Database"** → **"Add MongoDB"**
-2. MongoDB connect hone ke baad **Variables** tab mein `MONGODB_URI` copy karein
+2. MongoDB connect hone ke baad **Variables** tab mein `MONGODB_URL` copy karein
 
 ### Step 5: Backend Service Deploy Karein
 1. **"+ New"** → **"GitHub Repo"** → Apna repo select karein
@@ -49,7 +49,7 @@ git push -u origin main
 |----------|-------|
 | `PORT` | `3000` |
 | `NODE_ENV` | `production` |
-| `MONGODB_URI` | *(MongoDB service se)* |
+| `MONGODB_URL` | *(MongoDB service se)* |
 | `FRONTEND_URL` | *(baad mein update)* |
 | `JWT_SECRET` | *(strong random string)* |
 | `TWILIO_ACCOUNT_SID` | *(your value)* |

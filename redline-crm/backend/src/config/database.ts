@@ -14,7 +14,7 @@ let isConnected = false;
 // Connect to MongoDB
 export const connectDatabase = async (): Promise<typeof mongoose | null> => {
   try {
-    const conn = await mongoose.connect(env.MONGODB_URI, options);
+    const conn = await mongoose.connect(env.MONGODB_URL, options);
     isConnected = true;
     console.log(`✅ MongoDB connected: ${conn.connection.host}`);
     return conn;
