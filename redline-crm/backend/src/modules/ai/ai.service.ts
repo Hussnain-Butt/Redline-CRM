@@ -12,11 +12,11 @@ export class AIService {
   private model: any = null;
 
   constructor() {
-    if (env.VITE_APP_URL) {
-      this.genAI = new GoogleGenerativeAI(env.VITE_APP_URL);
+    if (env.GEMINI_API_KEY) {
+      this.genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
       this.model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     } else {
-      console.warn('⚠️ VITE_APP_URL is not set. AI features will use mock responses.');
+      console.warn('⚠️ GEMINI_API_KEY is not set. AI features will use mock responses.');
     }
   }
 

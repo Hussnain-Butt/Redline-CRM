@@ -1,9 +1,11 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 const getAI = () => {
-  const apiKey = process.env.API_KEY || '';
-  // In a real app, handle missing key gracefully. 
-  // For this demo, we assume the environment injects it.
+  // Access environment variable directly via import.meta.env for Vite compatibility
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.API_KEY || '';
+  if (!apiKey) {
+    throw new Error('API key is missing. Please provide a valid API key.');
+  }
   return new GoogleGenAI({ apiKey });
 };
 

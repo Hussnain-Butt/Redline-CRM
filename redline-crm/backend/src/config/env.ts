@@ -23,7 +23,7 @@ const envSchema = z.object({
   BACKEND_URL: z.string().url().optional(),
   
   // AI
-  VITE_APP_URL: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
 });
 
 // Parse and validate environment variables
