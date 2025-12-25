@@ -28,6 +28,37 @@ export const createSMS = async (req: Request, res: Response) => {
   }
 };
 
+// Webhook for incoming SMS from Twilio
+export const handleIncomingSMS = async (req: Request, res: Response) => {
+  try {
+    const { MessageSid, From, To, Body, NumMedia } = req.body;
+    
+    console.log('📨 Incoming SMS webhook:', {
+      messageSid: MessageSid,
+      from: From,
+      to: To,
+      body: Body,
+      numMedia: NumMedia
+    });
+
+    // Create incoming SMS record
+    await smsService.createIncoming({
+      twilioSid: MessageSid,
+      from: From,
+      to: To,
+      body: Body,
+      direction: 'inbound',
+      status: 'received'
+    });
+
+    // Respond with empty TwiML to acknowledge receipt
+    return res.status(200).send('<Response></Response>');
+  } catch (error) {
+    console.error('❌ Error processing incoming SMS:', error);
+    return res.status(500).send('<Response></Response>');
+  }
+};
+
 // Webhook for Twilio status callbacks
 export const updateSMSStatus = async (req: Request, res: Response) => {
   try {

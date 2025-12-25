@@ -5,7 +5,7 @@ dotenv.config();
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
-const ngrokUrl = process.env.NGROK_URL || 'https://your-ngrok-url.ngrok.io';
+const baseUrl = process.env.RAILWAY_URL || process.env.NGROK_URL || 'https://redline-crm-production.up.railway.app';
 
 if (!accountSid || !authToken) {
   console.error('❌ Missing Twilio credentials in .env file');
@@ -27,32 +27,48 @@ async function updateWebhooks() {
 
     console.log(`📱 Found ${phoneNumbers.length} phone number(s)\n`);
 
-    const webhookUrl = `${ngrokUrl}/api/calls/voice`;
-    const statusCallbackUrl = `${ngrokUrl}/api/calls/status`;
+    // Voice webhooks
+    const voiceUrl = `${baseUrl}/api/calls/voice`;
+    const voiceStatusCallback = `${baseUrl}/api/calls/status`;
+    
+    // SMS webhooks
+    const smsUrl = `${baseUrl}/api/sms/incoming`;
+    const smsStatusCallback = `${baseUrl}/api/sms/status`;
 
     for (const number of phoneNumbers) {
       console.log(`\n📞 Phone Number: ${number.phoneNumber}`);
       console.log(`   Current Voice URL: ${number.voiceUrl || 'Not set'}`);
-      console.log(`   Current Status Callback: ${number.statusCallback || 'Not set'}`);
+      console.log(`   Current SMS URL: ${number.smsUrl || 'Not set'}`);
 
-      // Update webhook URLs
+      // Update webhook URLs for both voice and SMS
       await client.incomingPhoneNumbers(number.sid).update({
-        voiceUrl: webhookUrl,
+        // Voice webhooks
+        voiceUrl: voiceUrl,
         voiceMethod: 'POST',
-        statusCallback: statusCallbackUrl,
+        statusCallback: voiceStatusCallback,
         statusCallbackMethod: 'POST',
+        
+        // SMS webhooks
+        smsUrl: smsUrl,
+        smsMethod: 'POST',
       });
 
-      console.log(`   ✅ Updated Voice URL: ${webhookUrl}`);
-      console.log(`   ✅ Updated Status Callback: ${statusCallbackUrl}`);
+      console.log(`   ✅ Updated Voice URL: ${voiceUrl}`);
+      console.log(`   ✅ Updated Voice Status: ${voiceStatusCallback}`);
+      console.log(`   ✅ Updated SMS URL: ${smsUrl}`);
+      console.log(`   ✅ Updated SMS Status: ${smsStatusCallback}`);
     }
 
     console.log('\n\n✅ All webhooks updated successfully!');
     console.log('\n📋 Summary:');
-    console.log(`   Ngrok URL: ${ngrokUrl}`);
-    console.log(`   Voice Webhook: ${webhookUrl}`);
-    console.log(`   Status Webhook: ${statusCallbackUrl}`);
-    console.log('\n💡 Make sure ngrok is running and the URL in .env is correct!');
+    console.log(`   Base URL: ${baseUrl}`);
+    console.log(`\n   📞 Voice Webhooks:`);
+    console.log(`      Voice URL: ${voiceUrl}`);
+    console.log(`      Status Callback: ${voiceStatusCallback}`);
+    console.log(`\n   💬 SMS Webhooks:`);
+    console.log(`      SMS URL: ${smsUrl}`);
+    console.log(`      Status Callback: ${smsStatusCallback}`);
+    console.log('\n💡 Make sure your backend is deployed and accessible at the base URL!');
 
   } catch (error: any) {
     console.error('❌ Error updating webhooks:', error.message);

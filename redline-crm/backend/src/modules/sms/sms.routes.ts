@@ -6,6 +6,7 @@ const router = Router();
 router.get('/', smsController.getAllSMS);
 router.get('/contact/:contactId', smsController.getSMSByContact);
 router.post('/', smsController.createSMS);
-router.post('/status', smsController.updateSMSStatus); // For Twilio webhooks
+router.post('/incoming', smsController.handleIncomingSMS); // Twilio incoming SMS webhook
+router.post('/status', smsController.updateSMSStatus); // Twilio status callback webhook
 
 export const smsRoutes = router;
