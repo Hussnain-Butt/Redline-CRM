@@ -1,0 +1,7 @@
+{
+  "name": "RedLine CRM",
+  "description": "A high-performance call center dashboard featuring AI-powered summaries, sentiment analysis, and seamless communication management. Designed in a bold Red, Black, and White aesthetic.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
