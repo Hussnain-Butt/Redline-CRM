@@ -57,7 +57,7 @@ git push -u origin main
 | `TWILIO_API_KEY` | *(your value)* |
 | `TWILIO_API_SECRET` | *(your value)* |
 | `TWILIO_TWIML_APP_SID` | *(your value)* |
-| `GEMINI_API_KEY` | *(your value)* |
+| `VITE_APP_URL` | *(your value)* |
 
 4. Deploy button press karein
 
@@ -72,7 +72,7 @@ git push -u origin main
 | Variable | Value |
 |----------|-------|
 | `VITE_APP_URL` | Backend ka Railway URL |
-| `GEMINI_API_KEY` | *(your value)* |
+| `VITE_APP_URL` | *(your value)* |
 
 4. Deploy button press karein
 

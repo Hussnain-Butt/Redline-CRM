@@ -319,14 +319,14 @@ export async function terminateTwilioCall(callSid: string): Promise<void> {
 
 // ==================== VOICE SDK (Browser-Based Calling) ====================
 
-const TWILIO_SERVER_URL = import.meta.env.VITE_TWILIO_SERVER_URL || 'http://localhost:3000';
+const TWILIO_SERVER_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000/api';
 
 /**
  * Fetch access token from backend server for Voice SDK
  */
 export async function getTwilioAccessToken(identity?: string): Promise<{ token: string; identity: string }> {
     try {
-        const url = new URL(`${TWILIO_SERVER_URL}/api/calls/token`);
+        const url = new URL(`${TWILIO_SERVER_URL}/calls/token`);
         if (identity) {
             url.searchParams.set('identity', identity);
         }
@@ -351,7 +351,7 @@ export async function getTwilioAccessToken(identity?: string): Promise<{ token: 
  */
 export async function isVoiceServerAvailable(): Promise<boolean> {
     try {
-        const response = await fetch(`${TWILIO_SERVER_URL}/api/health`);
+        const response = await fetch(`${TWILIO_SERVER_URL}/health`);
         if (!response.ok) return false;
 
         if (!response.ok) return false;
