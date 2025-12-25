@@ -43,7 +43,7 @@ export const deletePhoneNumber = async (req: Request, res: Response) => {
   }
 };
 
-export const syncPhoneNumbers = async (req: Request, res: Response) => {
+export const syncPhoneNumbers = async (_req: Request, res: Response) => {
   try {
     const numbers = await phoneNumberService.syncWithTwilio();
     return res.json({ success: true, data: numbers, message: `Synced ${numbers.length} numbers` });
