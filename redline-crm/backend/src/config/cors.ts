@@ -11,6 +11,7 @@ const corsOptions: CorsOptions = {
 
     const allowedOrigins = [
       env.FRONTEND_URL,
+      'https://delightful-rejoicing-production.up.railway.app',
       'http://localhost:3009',
       'http://localhost:5173',
       'http://127.0.0.1:3009',
