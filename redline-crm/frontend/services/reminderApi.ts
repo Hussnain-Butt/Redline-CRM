@@ -33,7 +33,7 @@ export interface UpdateReminderDTO {
     status?: string;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000/api';
 
 export const reminderApi = {
     getAll: async (params?: { status?: string, type?: string, priority?: string }): Promise<Reminder[]> => {

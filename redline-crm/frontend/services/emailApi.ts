@@ -22,7 +22,7 @@ export interface CreateEmailDTO {
     from?: string; // Optional, backend might default it
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000/api';
 
 export const emailApi = {
     getAll: async (params?: { status?: string, contactId?: string }): Promise<Email[]> => {

@@ -35,7 +35,7 @@ const AIAssistant: React.FC = () => {
     const [insight, setInsight] = useState<string>("Loading personalized insights...");
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    const API_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000/api';
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

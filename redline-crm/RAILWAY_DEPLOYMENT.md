@@ -71,7 +71,7 @@ git push -u origin main
 
 | Variable | Value |
 |----------|-------|
-| `VITE_API_URL` | Backend ka Railway URL |
+| `VITE_APP_URL` | Backend ka Railway URL |
 | `GEMINI_API_KEY` | *(your value)* |
 
 4. Deploy button press karein
