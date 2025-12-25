@@ -17,7 +17,7 @@ export interface TestConnectionResult {
  * Get current email settings
  */
 export const getEmailSettings = async (): Promise<EmailSettings> => {
-  const response = await fetch(`${API_URL}/api/settings/email`);
+  const response = await fetch(`${API_URL}/settings/email`);
   if (!response.ok) {
     throw new Error('Failed to fetch email settings');
   }
@@ -29,7 +29,7 @@ export const getEmailSettings = async (): Promise<EmailSettings> => {
  * Update email settings
  */
 export const updateEmailSettings = async (settings: EmailSettings): Promise<EmailSettings> => {
-  const response = await fetch(`${API_URL}/api/settings/email`, {
+  const response = await fetch(`${API_URL}/settings/email`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -50,7 +50,7 @@ export const updateEmailSettings = async (settings: EmailSettings): Promise<Emai
  * Test email connection with provided credentials
  */
 export const testEmailConnection = async (settings: EmailSettings): Promise<TestConnectionResult> => {
-  const response = await fetch(`${API_URL}/api/settings/email/test`, {
+  const response = await fetch(`${API_URL}/settings/email/test`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
