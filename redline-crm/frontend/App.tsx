@@ -20,6 +20,7 @@ import {
     Lock,
     Unlock
 } from 'lucide-react';
+import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Dialer from './components/Dialer';
 import Contacts from './components/Contacts';
@@ -67,6 +68,9 @@ export default function App() {
     const location = useLocation();
 
     // App State
+    const [isAuthenticated, setIsAuthenticated] = useState(() => {
+        return localStorage.getItem('auth_token') === 'logged_in';
+    });
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
     const [callLogs, setCallLogs] = useState<CallLog[]>([]);
@@ -148,7 +152,22 @@ export default function App() {
             }
         }
         init();
+        init();
     }, []);
+
+    const handleLogin = () => {
+        setIsAuthenticated(true);
+        localStorage.setItem('auth_token', 'logged_in');
+    };
+
+    const handleLogout = () => {
+        setIsAuthenticated(false);
+        localStorage.removeItem('auth_token');
+    };
+
+    if (!isAuthenticated) {
+        return <Login onLogin={handleLogin} />;
+    }
 
     // SMS Polling
     useEffect(() => {
@@ -715,10 +734,12 @@ export default function App() {
                         <Lock className="w-4 h-4" />
                         <span>Lock Screen</span>
                     </button>
-                    <button className="flex items-center gap-2 text-neutral-500 hover:text-white transition-colors text-sm">
-                        <LogOut className="w-4 h-4" />
-                        <span>Sign Out</span>
-                    </button>
+                <button 
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 text-neutral-500 hover:text-white transition-colors text-sm">
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                </button>
                 </div>
             </div>
 
