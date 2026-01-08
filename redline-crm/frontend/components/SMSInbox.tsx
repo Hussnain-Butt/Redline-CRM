@@ -40,21 +40,74 @@ const SMSInbox: React.FC<SMSInboxProps> = ({
     const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
     const [showCountryPicker, setShowCountryPicker] = useState(false);
 
-    // Group messages by contact
-    const conversations: Conversation[] = contacts.map(contact => {
-        const contactMessages = allMessages.filter(m => m.contactId === contact.id);
-        const lastMessage = contactMessages.sort((a, b) =>
-            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        )[0];
+    // Group messages by contact or phone number
+    const conversations: Conversation[] = React.useMemo(() => {
+        const convMap = new Map<string, Conversation>();
 
-        return {
-            contact,
-            lastMessage,
-            unreadCount: contactMessages.filter(m => m.direction === 'inbound' && m.status === 'received').length
-        };
-    }).filter(c => c.lastMessage).sort((a, b) =>
-        new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime()
-    );
+        // 1. Initialize with specific contacts who have messages
+        contacts.forEach(contact => {
+            const contactMessages = allMessages.filter(m => m.contactId === contact.id);
+            if (contactMessages.length > 0) {
+                const lastMessage = contactMessages.sort((a, b) =>
+                    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                )[0];
+
+                convMap.set(contact.id, {
+                    contact,
+                    lastMessage,
+                    unreadCount: contactMessages.filter(m => m.direction === 'inbound' && m.status === 'received').length
+                });
+            }
+        });
+
+        // 2. Find messages from unknown numbers (no contactId or contactId not in contacts list)
+        allMessages.forEach(msg => {
+            // If message is already associated with a known contact, skip
+            if (msg.contactId && contacts.find(c => c.id === msg.contactId)) return;
+
+            // Identify conversation key (use raw phone number for unknown)
+            // For inbound, use fromNumber. For outbound, use toNumber.
+            const otherPartyNumber = msg.direction === 'inbound' ? msg.fromNumber : msg.toNumber;
+            
+            if (!otherPartyNumber) return;
+
+            // Check if we already have a conversation for this number (via contact match)
+            const isKnownContact = contacts.find(c => c.phone === otherPartyNumber || c.phone.includes(otherPartyNumber));
+            if (isKnownContact && convMap.has(isKnownContact.id)) return;
+
+            // If it's truly unknown, create/update a placeholder conversation
+            if (!convMap.has(otherPartyNumber)) {
+                convMap.set(otherPartyNumber, {
+                    contact: {
+                        id: `unknown-${otherPartyNumber}`,
+                        name: otherPartyNumber, // Display number as name
+                        phone: otherPartyNumber,
+                        email: '',
+                        company: 'Unknown',
+                        status: 'Lead',
+                        notes: 'Auto-generated from SMS',
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    },
+                    lastMessage: msg,
+                    unreadCount: 0
+                });
+            }
+
+            const conv = convMap.get(otherPartyNumber)!;
+            // Update last message if this one is newer
+            if (new Date(msg.timestamp).getTime() > new Date(conv.lastMessage.timestamp).getTime()) {
+                conv.lastMessage = msg;
+            }
+            if (msg.direction === 'inbound' && msg.status === 'received') {
+                conv.unreadCount++;
+            }
+        });
+
+        return Array.from(convMap.values()).sort((a, b) => 
+            new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime()
+        );
+    }, [contacts, allMessages]);
 
     const filteredConversations = conversations.filter(c =>
         c.contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -62,8 +115,12 @@ const SMSInbox: React.FC<SMSInboxProps> = ({
     );
 
     const conversationMessages = selectedConversation
-        ? allMessages.filter(m => m.contactId === selectedConversation.contact.id)
-            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+        ? allMessages.filter(m => {
+            if (selectedConversation.contact.id.startsWith('unknown-')) {
+                 return m.fromNumber === selectedConversation.contact.phone || m.toNumber === selectedConversation.contact.phone;
+            }
+            return m.contactId === selectedConversation.contact.id;
+        }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
         : [];
 
     const handleSendMessage = () => {
