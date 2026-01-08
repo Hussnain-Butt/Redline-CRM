@@ -65,6 +65,7 @@ const Dialer: React.FC<DialerProps> = ({
   const [voiceSDKAvailable, setVoiceSDKAvailable] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('dialer');
   const [currentCallSid, setCurrentCallSid] = useState<string | null>(null);
+  const [incomingCall, setIncomingCall] = useState<any | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const deviceRef = useRef<any>(null);
@@ -176,7 +177,9 @@ const Dialer: React.FC<DialerProps> = ({
 
       device.on('incoming', (call: any) => {
         console.log('Incoming call from:', call.parameters.From);
-        call.reject();
+        setIncomingCall(call);
+        setCallStatus('ringing');
+        playRingtone();
       });
 
       device.on('tokenWillExpire', async () => {
@@ -422,6 +425,51 @@ const Dialer: React.FC<DialerProps> = ({
     }
   };
 
+  const handleAcceptCall = async () => {
+    if (!incomingCall) return;
+    
+    try {
+        stopRingtone(); // Stop ringing
+        await incomingCall.accept();
+        activeCallRef.current = incomingCall;
+        setIncomingCall(null);
+        setCallStatus('connected');
+        setIsRecording(true);
+        callStartTimeRef.current = new Date(); // Start timer
+        
+        // Setup listeners for this admitted call
+        incomingCall.on('disconnect', () => {
+            console.log('Call disconnected');
+            handleCallEnd();
+        });
+
+        incomingCall.on('error', (error: any) => {
+            console.error('Call error:', error);
+            setCallError(`Call error: ${error.message}`);
+            handleCallEnd();
+        });
+
+        incomingCall.on('mute', (muted: boolean) => {
+            setIsMuted(muted);
+        });
+
+    } catch (e: any) {
+        console.error("Failed to accept call", e);
+        setCallError("Failed to accept call");
+        setIncomingCall(null);
+        setCallStatus('ready');
+    }
+  };
+
+  const handleRejectCall = () => {
+      if (incomingCall) {
+          incomingCall.reject();
+          setIncomingCall(null);
+          setCallStatus('ready');
+          stopRingtone();
+      }
+  };
+
   const handleCallEnd = () => {
     stopRingtone(); // Ensure stopped
     const finalDuration = duration;
@@ -605,6 +653,48 @@ const Dialer: React.FC<DialerProps> = ({
             <PhoneOff className="w-6 h-6" />
             <span className="text-lg font-bold">End Call</span>
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Incoming Call Overlay
+  if (incomingCall) {
+    return (
+      <div className="h-full flex flex-col items-center justify-between py-12 bg-neutral-900 text-white rounded-3xl shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-neutral-900 to-black z-0"></div>
+        {/* Animated Background Pulse */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-green-600 rounded-full blur-[120px] opacity-20 animate-pulse pointer-events-none"></div>
+
+        <div className="z-10 flex flex-col items-center mt-12 space-y-4">
+          <div className="w-32 h-32 bg-neutral-800 rounded-full flex items-center justify-center border-4 border-neutral-700 shadow-xl animate-bounce">
+            <PhoneIncoming className="w-16 h-16 text-green-500" />
+          </div>
+          <h2 className="text-3xl font-bold tracking-tight">Incoming Call</h2>
+          <p className="text-xl text-white font-medium">{incomingCall.parameters.From}</p>
+          <p className="text-neutral-400">RedLine CRM</p>
+        </div>
+
+        <div className="z-10 w-full max-w-md px-8 mb-8 flex items-center justify-center gap-8">
+            <button
+            onClick={handleRejectCall}
+            className="flex flex-col items-center gap-2 group"
+            >
+            <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg shadow-red-900/50 group-hover:bg-red-500 transition-all active:scale-95">
+                <PhoneOff className="w-8 h-8 text-white" />
+            </div>
+            <span className="text-sm font-medium text-red-500">Decline</span>
+            </button>
+
+            <button
+            onClick={handleAcceptCall}
+            className="flex flex-col items-center gap-2 group"
+            >
+            <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center shadow-lg shadow-green-900/50 group-hover:bg-green-500 transition-all active:scale-95 animate-pulse">
+                <Phone className="w-8 h-8 text-white" />
+            </div>
+            <span className="text-sm font-medium text-green-500">Answer</span>
+            </button>
         </div>
       </div>
     );
