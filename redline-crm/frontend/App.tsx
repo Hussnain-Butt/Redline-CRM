@@ -641,7 +641,7 @@ export default function App() {
         );
     }
 
-    }
+
 
     // Login Guard
     if (!isAuthenticated) {
