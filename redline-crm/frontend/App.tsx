@@ -641,6 +641,13 @@ export default function App() {
         );
     }
 
+    }
+
+    // Login Guard
+    if (!isAuthenticated) {
+        return <Login onLogin={handleLogin} />;
+    }
+
     return (
         <div className="flex h-screen bg-neutral-50 overflow-hidden">
             {/* Sidebar */}
