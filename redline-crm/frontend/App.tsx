@@ -165,12 +165,11 @@ export default function App() {
         localStorage.removeItem('auth_token');
     };
 
-    if (!isAuthenticated) {
-        return <Login onLogin={handleLogin} />;
-    }
+
 
     // SMS Polling
     useEffect(() => {
+        if (!isAuthenticated) return;
         const pollSMS = async () => {
              try {
                 const backendSMS = await smsApi.getAll();
