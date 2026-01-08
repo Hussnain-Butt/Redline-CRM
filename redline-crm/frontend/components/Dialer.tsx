@@ -430,6 +430,20 @@ const Dialer: React.FC<DialerProps> = ({
     
     try {
         stopRingtone(); // Stop ringing
+        const fromNumber = incomingCall.parameters.From;
+        
+        // Update Dialer state to show this number
+        if (fromNumber) {
+            const matchingCountry = COUNTRIES.find(c => fromNumber.startsWith(c.dialCode));
+            if (matchingCountry) {
+                setSelectedCountry(matchingCountry);
+                setNumber(fromNumber.replace(matchingCountry.dialCode, '').replace(/^[\s-]/, ''));
+            } else {
+                setNumber(fromNumber);
+                // Keep default country if no match found, or maybe set to 'Unknown' logic if needed
+            }
+        }
+
         await incomingCall.accept();
         activeCallRef.current = incomingCall;
         setIncomingCall(null);
