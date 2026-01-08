@@ -138,23 +138,28 @@ export class CallService {
 
     console.log(`📞 Handling webhook: From ${From} to ${To}`);
 
-    if (To) {
-      // Outbound call - dial the number
+    
+    // Check if the call is initiated by a Twilio Client (browser)
+    // Twilio sends 'Caller' as 'client:identity' for client calls
+    // For PSTN calls, 'Caller' is the phone number
+    const isClientCall = From.startsWith('client:');
+
+    if (isClientCall && To) {
+      // Outbound call from Browser -> Phone
       console.log(`📤 Outbound call to: ${To}`);
       
-      // For TwilioClient calls, callerId is REQUIRED and must be a validated number
       const dial = response.dial({
         callerId: env.TWILIO_PHONE_NUMBER,
         timeout: 30,
         timeLimit: 14400,
-        record: 'record-from-answer', // Enable recording from when call is answered
+        record: 'record-from-answer',
         recordingStatusCallback: `${env.BACKEND_URL || 'http://localhost:3000'}/api/calls/recording-status`,
         recordingStatusCallbackMethod: 'POST',
       });
       
       dial.number(To);
     } else {
-      // Inbound call
+      // Inbound call from Phone -> Browser
       console.log(`📥 Inbound call from: ${From}`);
       response.say('Welcome to RedLine CRM. Connecting you to an agent.');
       
