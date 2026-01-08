@@ -150,15 +150,27 @@ export default function App() {
         init();
     }, []);
 
-    async function loadData() {
-        // Load SMS from Backend
-        try {
-            const backendSMS = await smsApi.getAll();
-            setAllSMS(backendSMS);
-        } catch (error) {
-             console.error("Failed to load SMS from backend:", error);
-        }
+    // SMS Polling
+    useEffect(() => {
+        const pollSMS = async () => {
+             try {
+                const backendSMS = await smsApi.getAll();
+                setAllSMS(prev => {
+                    if (prev.length !== backendSMS.length) return backendSMS;
+                    if (prev.length > 0 && backendSMS.length > 0 && prev[prev.length-1].id !== backendSMS[backendSMS.length-1].id) return backendSMS;
+                    return prev;
+                });
+            } catch (error) {
+                 console.error("Failed to poll SMS:", error);
+            }
+        };
 
+        pollSMS();
+        const interval = setInterval(pollSMS, 5000);
+        return () => clearInterval(interval);
+    }, []);
+
+    async function loadData() {
         // Load Phone Numbers from Backend
         try {
             const backendNumbers = await phoneNumberApi.getAll();
@@ -192,7 +204,6 @@ export default function App() {
         }
 
         // Set default phone number (logic simplified)
-        // Ideally we pick the default one directly from loaded numbers in useEffect or here
     }
 
     // Load contact-specific data when contact is selected
