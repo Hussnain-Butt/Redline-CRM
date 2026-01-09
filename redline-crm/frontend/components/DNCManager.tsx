@@ -46,8 +46,8 @@ export const DNCManager: React.FC = () => {
       <div className="max-w-7xl mx-auto mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent flex items-center gap-3">
-              <Shield className="w-10 h-10 text-blue-400" />
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent flex items-center gap-3">
+              <Shield className="w-10 h-10 text-red-500" />
               DNC Compliance Manager
             </h1>
             <p className="text-gray-400 mt-2">Do Not Call List Management & Protection System</p>
@@ -100,7 +100,7 @@ export const DNCManager: React.FC = () => {
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
                 activeTab === tab.id
-                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/50'
+                  ? 'bg-red-600 text-white shadow-lg shadow-red-900/50'
                   : 'bg-transparent text-gray-400 hover:text-white hover:bg-gray-700/50'
               }`}
             >
@@ -215,7 +215,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, onRefresh, setError, setSucc
             <div className="flex gap-2">
               <button
                 onClick={onRefresh}
-                className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-all"
+                className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all"
                 title="Refresh stats"
               >
                 <RefreshCw className="w-5 h-5" />
@@ -345,7 +345,7 @@ const UploadTab: React.FC<UploadTabProps> = ({ setError, setSuccess, onUploadCom
                 onClick={() => setSource(s)}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${
                   source === s
-                    ? 'bg-blue-500 text-white'
+                    ? 'bg-red-600 text-white'
                     : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
                 }`}
               >
@@ -363,11 +363,11 @@ const UploadTab: React.FC<UploadTabProps> = ({ setError, setSuccess, onUploadCom
           onDrop={handleDrop}
           className={`border-2 border-dashed rounded-lg p-12 text-center transition-all ${
             dragActive
-              ? 'border-blue-500 bg-blue-500/10'
+              ? 'border-red-500 bg-red-500/10'
               : 'border-gray-600 hover:border-gray-500'
           }`}
         >
-          <Upload className={`w-16 h-16 mx-auto mb-4 ${dragActive ? 'text-blue-400' : 'text-gray-500'}`} />
+          <Upload className={`w-16 h-16 mx-auto mb-4 ${dragActive ? 'text-red-400' : 'text-gray-500'}`} />
           {file ? (
             <>
               <p className="text-white font-medium">{file.name}</p>
@@ -385,7 +385,7 @@ const UploadTab: React.FC<UploadTabProps> = ({ setError, setSuccess, onUploadCom
             <>
               <p className="text-white font-medium mb-2">Drag & drop your CSV file here</p>
               <p className="text-gray-400 text-sm mb-4">or</p>
-              <label className="inline-block px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 cursor-pointer transition-all">
+              <label className="inline-block px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 cursor-pointer transition-all">
                 Browse Files
                 <input
                   type="file"
@@ -426,7 +426,7 @@ const UploadTab: React.FC<UploadTabProps> = ({ setError, setSuccess, onUploadCom
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg p-6">
           <h3 className="text-lg font-semibold mb-4">Upload Results</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gray-700/50 rounded-lg p-4">
+            <div className="bg-neutral-800/50 rounded-lg p-4">
               <p className="text-gray-400 text-sm">Total Records</p>
               <p className="text-2xl font-bold text-white mt-1">
                 {uploadResult.totalRecords.toLocaleString()}
@@ -444,9 +444,9 @@ const UploadTab: React.FC<UploadTabProps> = ({ setError, setSuccess, onUploadCom
                 {uploadResult.failedImports.toLocaleString()}
               </p>
             </div>
-            <div className="bg-blue-500/10 rounded-lg p-4">
+            <div className="bg-red-500/10 rounded-lg p-4">
               <p className="text-gray-400 text-sm">Processing Time</p>
-              <p className="text-2xl font-bold text-blue-400 mt-1">
+              <p className="text-2xl font-bold text-red-400 mt-1">
                 {(uploadResult.processingTime / 1000).toFixed(2)}s
               </p>
             </div>
@@ -533,7 +533,7 @@ const CheckTab: React.FC<CheckTabProps> = ({ setError }) => {
           <button
             onClick={handleCheck}
             disabled={checking}
-            className="px-8 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 font-medium flex items-center gap-2 transition-all"
+            className="px-8 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium flex items-center gap-2 transition-all"
           >
             {checking ? (
               <>
@@ -735,11 +735,11 @@ interface StatCardProps {
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color, warning }) => {
   const colors = {
-    blue: 'from-blue-500 to-blue-600',
+    blue: 'from-red-500 to-red-600',
     green: 'from-green-500 to-green-600',
     red: 'from-red-500 to-red-600',
     yellow: 'from-yellow-500 to-yellow-600',
-    purple: 'from-purple-500 to-purple-600',
+    purple: 'from-red-500 to-red-600',
   };
 
   return (
