@@ -35,6 +35,7 @@ import Reminders from './components/Reminders';
 import CallRecordings from './components/CallRecordings';
 import AIAssistant from './components/AIAssistant';
 import LockScreen from './components/LockScreen';
+import DNCManager from './components/DNCManager';
 import { ViewState, Contact, CallLog, Message, PhoneNumber, SMSMessage, ContactNote, getCountryByCode } from './types';
 import { summarizeTranscript, generateEmailDraft } from './services/geminiService';
 import {
@@ -1406,6 +1407,13 @@ export default function App() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                } />
+
+                {/* DNC Manager */}
+                <Route path="/dnc" element={
+                    <div className="h-full overflow-y-auto">
+                        <DNCManager />
                     </div>
                 } />
                 </Routes>

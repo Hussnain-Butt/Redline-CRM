@@ -9,6 +9,15 @@ import {
   removeInternalDNCSchema,
 } from './validators.js';
 
+// Extend Express Request type to include file property from multer
+declare global {
+  namespace Express {
+    interface Request {
+      file?: Express.Multer.File;
+    }
+  }
+}
+
 /**
  * Configure multer for CSV file uploads
  */
@@ -24,7 +33,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  fileFilter: (_req, file, cb: FileFilterCallback) => {
+  fileFilter: (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
     // Only allow CSV files
     if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
       cb(null, true);
@@ -191,7 +200,7 @@ export class DNCController {
    * Remove expired DNC records
    * POST /api/dnc/cleanup
    */
-  async cleanupExpired(req: Request, res: Response, next: NextFunction) {
+  async cleanupExpired(_req: Request, res: Response, next: NextFunction) {
     try {
       const deletedCount = await dncService.removeExpiredRecords();
 

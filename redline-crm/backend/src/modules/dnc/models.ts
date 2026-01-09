@@ -190,7 +190,7 @@ const DNCUploadSchema: Schema = new Schema(
       required: true,
     },
     state: String,
-    errors: [
+    uploadErrors: [
       {
         row: Number,
         phoneNumber: String,
