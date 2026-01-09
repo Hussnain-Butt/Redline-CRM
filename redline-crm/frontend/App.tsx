@@ -18,7 +18,8 @@ import {
     Bell,
     Mic,
     Lock,
-    Unlock
+    Unlock,
+    Shield
 } from 'lucide-react';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -674,6 +675,7 @@ export default function App() {
                         <NavItem path="/reminders" icon={Bell} label="Reminders" />
                         <NavItem path="/recordings" icon={Mic} label="Recordings" />
                         <NavItem path="/settings" icon={Settings} label="Settings" />
+                        <NavItem path="/dnc" icon={Shield} label="DNC Manager" />
                     </nav>
 
                     {/* Phone Number Indicator */}
