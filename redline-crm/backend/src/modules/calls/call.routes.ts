@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { validateRequest } from '../../middleware/validateRequest.js';
+import { dncFilterMiddleware } from '../../middleware/dncFilter.js';
 import {
   createCallSchema,
   updateCallSchema,
@@ -43,8 +44,8 @@ router.get('/recording/:recordingSid', downloadRecording);
 // GET /api/calls - Get all calls
 router.get('/', validateRequest(callQuerySchema, 'query'), getCalls);
 
-// POST /api/calls - Create call log
-router.post('/', validateRequest(createCallSchema), createCall);
+// POST /api/calls - Create call log (with DNC filtering)
+router.post('/', dncFilterMiddleware, validateRequest(createCallSchema), createCall);
 
 // GET /api/calls/:id - Get call by ID
 router.get('/:id', validateRequest(idParamSchema, 'params'), getCallById);

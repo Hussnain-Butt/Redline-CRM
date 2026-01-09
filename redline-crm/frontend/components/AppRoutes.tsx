@@ -10,6 +10,7 @@ import Templates from './components/Templates';
 import Reminders from './components/Reminders';
 import CallRecordings from './components/CallRecordings';
 import PhoneNumbersSettings from './components/PhoneNumbersSettings';
+import DNCManager from './components/DNCManager';
 import { CallLog, Contact, SMSMessage, PhoneNumber, ContactNote } from './types';
 
 interface AppRoutesProps {
@@ -175,6 +176,16 @@ const AppRoutes: React.FC<AppRoutesProps> = (props) => {
                                 />
                             </div>
                         </div>
+                    </div>
+                } 
+            />
+            
+            {/* DNC Manager */}
+            <Route 
+                path="/dnc" 
+                element={
+                    <div className="h-full overflow-y-auto">
+                        <DNCManager />
                     </div>
                 } 
             />

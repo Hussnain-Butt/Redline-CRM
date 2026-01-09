@@ -89,6 +89,10 @@ import { scheduledCallRoutes } from './modules/scheduledCalls/index.js';
 app.use('/api/notes', noteRoutes);
 app.use('/api/scheduled-calls', scheduledCallRoutes);
 
+// DNC (Do Not Call) Module
+import { dncRoutes } from './modules/dnc/index.js';
+app.use('/api/dnc', dncRoutes);
+
 // Future routes:
 // app.use('/api/contacts', contactRoutes);
 // app.use('/api/calls', callRoutes);
