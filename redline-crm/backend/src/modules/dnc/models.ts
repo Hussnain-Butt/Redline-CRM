@@ -150,7 +150,7 @@ export interface IDNCUpload extends Document {
   failedImports: number;
   source: 'NATIONAL' | 'STATE' | 'MANUAL';
   state?: string;
-  errors?: Array<{
+  uploadErrors?: Array<{
     row: number;
     phoneNumber: string;
     error: string;

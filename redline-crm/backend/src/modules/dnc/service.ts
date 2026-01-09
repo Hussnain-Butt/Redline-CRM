@@ -171,7 +171,7 @@ export class DNCService {
       uploadRecord.totalRecords = totalRecords;
       uploadRecord.successfulImports = successfulImports;
       uploadRecord.failedImports = failedImports;
-      uploadRecord.errors = errors.slice(0, 100); // Limit error storage
+      uploadRecord.uploadErrors = errors.slice(0, 100); // Limit error storage
       uploadRecord.processingTime = Date.now() - startTime;
       uploadRecord.status = 'COMPLETED';
       await uploadRecord.save();
@@ -182,7 +182,7 @@ export class DNCService {
       return uploadRecord;
     } catch (error) {
       uploadRecord.status = 'FAILED';
-      uploadRecord.errors = [
+      uploadRecord.uploadErrors = [
         {
           row: 0,
           phoneNumber: '',

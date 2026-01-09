@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import multer from 'multer';
+import multer, { FileFilterCallback } from 'multer';
 import path from 'path';
 import { dncService } from './service.js';
 import {
@@ -13,10 +13,10 @@ import {
  * Configure multer for CSV file uploads
  */
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (_req, _file, cb) => {
     cb(null, 'uploads/dnc/'); // Temporary storage
   },
-  filename: (req, file, cb) => {
+  filename: (_req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, 'dnc-' + uniqueSuffix + path.extname(file.originalname));
   },
@@ -24,7 +24,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  fileFilter: (req, file, cb) => {
+  fileFilter: (_req, file, cb: FileFilterCallback) => {
     // Only allow CSV files
     if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
       cb(null, true);
@@ -50,7 +50,7 @@ export class DNCController {
   async uploadDNCFile(req: Request, res: Response, next: NextFunction) {
     try {
       if (!req.file) {
-        return res.status(400).json({
+        return void res.status(400).json({
           success: false,
           error: 'No file uploaded',
         });
@@ -75,7 +75,7 @@ export class DNCController {
           successfulImports: result.successfulImports,
           failedImports: result.failedImports,
           processingTime: result.processingTime,
-          errors: result.errors?.slice(0, 10), // Return first 10 errors only
+          errors: result.uploadErrors?.slice(0, 10), // Return first 10 errors only
         },
       });
     } catch (error) {
@@ -151,7 +151,7 @@ export class DNCController {
    * Remove phone number from internal DNC list
    * DELETE /api/dnc/internal/:phoneNumber
    */
-  async removeFromInternalDNC(req: Request, res: Response, next: NextFunction) {
+  async removeFromInternalDNC(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { phoneNumber } = req.params;
       const { removedBy, removedReason } = req.body;
@@ -174,7 +174,7 @@ export class DNCController {
    * Get DNC statistics
    * GET /api/dnc/stats
    */
-  async getStats(req: Request, res: Response, next: NextFunction) {
+  async getStats(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const stats = await dncService.getStats();
 

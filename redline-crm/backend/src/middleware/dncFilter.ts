@@ -30,7 +30,7 @@ export async function dncFilterMiddleware(
 
     if (dncStatus.isOnDNC) {
       // Number is on DNC list - block the call
-      res.status(403).json({
+      return void res.status(403).json({
         success: false,
         error: 'Call blocked: Phone number is on Do Not Call list',
         details: {
@@ -40,7 +40,6 @@ export async function dncFilterMiddleware(
           canCall: false,
         },
       });
-      return;
     }
 
     // Number is safe to call - proceed
@@ -59,7 +58,7 @@ export async function dncFilterMiddleware(
  */
 export async function dncCheckMiddleware(
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): Promise<void> {
   try {
