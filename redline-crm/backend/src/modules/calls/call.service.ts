@@ -113,12 +113,15 @@ export class CallService {
       incomingAllow: true, // Allow incoming calls
     });
 
-    // Create an Access Token
+    // Create an Access Token with explicit TTL (1 hour = 3600 seconds)
     const token = new AccessToken(
       env.TWILIO_ACCOUNT_SID,
       env.TWILIO_API_KEY,
       env.TWILIO_API_SECRET,
-      { identity: identity }
+      { 
+        identity: identity,
+        ttl: 3600, // Token valid for 1 hour
+      }
     );
     token.addGrant(voiceGrant);
 
