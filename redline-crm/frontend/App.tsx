@@ -1056,6 +1056,14 @@ export default function App() {
                                 onPhoneNumberSelect={setSelectedPhoneNumber}
                                 onSendSMS={handleSendSMSGlobal}
                                 onSelectContact={setSelectedContact}
+                                onRefreshMessages={async () => {
+                                    try {
+                                        const updatedSMS = await smsApi.getAll();
+                                        setAllSMS(updatedSMS);
+                                    } catch (error) {
+                                        console.error('Failed to refresh messages:', error);
+                                    }
+                                }}
                             />
                         </div>
                     } />

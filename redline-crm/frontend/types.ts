@@ -57,6 +57,7 @@ export interface SMSMessage {
   direction: 'inbound' | 'outbound';
   body: string;
   status: 'queued' | 'sent' | 'delivered' | 'failed' | 'received';
+  read: boolean;            // Whether the message has been read
   timestamp: Date;
   twilioSid?: string;
 }

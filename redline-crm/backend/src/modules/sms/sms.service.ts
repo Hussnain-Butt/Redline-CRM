@@ -97,7 +97,7 @@ export class SMSService {
         }
       }
 
-      // Save to database
+      // Save to database - outbound messages are always marked as read
       const smsRecord = new SMS({
         contactId,
         fromNumber: data.from,
@@ -106,6 +106,7 @@ export class SMSService {
         direction: 'outbound',
         status: message.status || 'sent',
         twilioSid: message.sid,
+        read: true, // Outbound messages are always read
         timestamp: new Date(),
       });
       
@@ -120,6 +121,32 @@ export class SMSService {
         error: error.message || 'Failed to send SMS' 
       };
     }
+  }
+
+  /**
+   * Mark all messages from a phone number or contact as read
+   */
+  async markAsRead(params: { contactId?: string; phoneNumber?: string }): Promise<number> {
+    const query: any = { direction: 'inbound', read: false };
+    
+    if (params.contactId && !params.contactId.startsWith('unknown-')) {
+      query.contactId = params.contactId;
+    } else if (params.phoneNumber) {
+      query.fromNumber = params.phoneNumber;
+    } else {
+      return 0;
+    }
+
+    const result = await SMS.updateMany(query, { read: true });
+    console.log(`✅ Marked ${result.modifiedCount} messages as read`);
+    return result.modifiedCount;
+  }
+
+  /**
+   * Get count of unread messages (inbound only)
+   */
+  async getUnreadCount(): Promise<number> {
+    return await SMS.countDocuments({ direction: 'inbound', read: false });
   }
 }
 

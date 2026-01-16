@@ -78,5 +78,37 @@ export const smsApi = {
     } catch (error: any) {
       return { success: false, error: error.message || 'Network error' };
     }
+  },
+
+  /**
+   * Mark messages as read for a conversation
+   */
+  markAsRead: async (params: { contactId?: string; phoneNumber?: string }): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_URL}/sms/mark-read`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+      const result = await response.json();
+      return result.success;
+    } catch (error) {
+      console.error('Failed to mark messages as read:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Get unread message count
+   */
+  getUnreadCount: async (): Promise<number> => {
+    try {
+      const response = await fetch(`${API_URL}/sms/unread-count`);
+      const result = await response.json();
+      return result.success ? result.data.unreadCount : 0;
+    } catch (error) {
+      console.error('Failed to get unread count:', error);
+      return 0;
+    }
   }
 };

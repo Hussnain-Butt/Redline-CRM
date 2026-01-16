@@ -8,6 +8,7 @@ export interface ISMS {
   body: string;
   status: 'queued' | 'sent' | 'delivered' | 'failed' | 'received';
   twilioSid?: string;
+  read: boolean; // Track if message has been read
   timestamp: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -28,6 +29,7 @@ const smsSchema = new Schema<ISMSDocument>(
       default: 'queued',
     },
     twilioSid: { type: String, trim: true },
+    read: { type: Boolean, default: false }, // Unread by default for inbound
     timestamp: { type: Date, default: Date.now },
   },
   {

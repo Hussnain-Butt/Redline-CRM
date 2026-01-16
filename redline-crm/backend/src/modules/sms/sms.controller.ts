@@ -101,3 +101,33 @@ export const updateSMSStatus = async (req: Request, res: Response) => {
     return res.status(500).send('Error processing webhook');
   }
 };
+
+// Mark messages as read for a conversation
+export const markAsRead = async (req: Request, res: Response) => {
+  try {
+    const { contactId, phoneNumber } = req.body;
+    
+    if (!contactId && !phoneNumber) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Either contactId or phoneNumber is required' 
+      });
+    }
+
+    const count = await smsService.markAsRead({ contactId, phoneNumber });
+    return res.json({ success: true, data: { markedCount: count } });
+  } catch (error) {
+    console.error('❌ Error marking messages as read:', error);
+    return res.status(500).json({ success: false, error: 'Failed to mark messages as read' });
+  }
+};
+
+// Get unread message count
+export const getUnreadCount = async (_req: Request, res: Response) => {
+  try {
+    const count = await smsService.getUnreadCount();
+    return res.json({ success: true, data: { unreadCount: count } });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to get unread count' });
+  }
+};

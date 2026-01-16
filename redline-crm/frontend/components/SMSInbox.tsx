@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { Contact, SMSMessage, PhoneNumber, getCountryByCode, COUNTRIES } from '../types';
 import NumberSelector from './NumberSelector';
+import { smsApi } from '../services/smsApi';
 
 interface SMSInboxProps {
     contacts: Contact[];
@@ -13,6 +14,7 @@ interface SMSInboxProps {
     onPhoneNumberSelect: (phoneNumber: PhoneNumber) => void;
     onSendSMS: (sms: Omit<SMSMessage, 'id' | 'timestamp' | 'twilioSid'>) => void;
     onSelectContact: (contact: Contact) => void;
+    onRefreshMessages?: () => void; // Callback to refresh messages after marking as read
 }
 
 interface Conversation {
@@ -28,7 +30,8 @@ const SMSInbox: React.FC<SMSInboxProps> = ({
     selectedPhoneNumber,
     onPhoneNumberSelect,
     onSendSMS,
-    onSelectContact
+    onSelectContact,
+    onRefreshMessages
 }) => {
     const [view, setView] = useState<'inbox' | 'conversation' | 'compose'>('inbox');
     const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -56,7 +59,8 @@ const SMSInbox: React.FC<SMSInboxProps> = ({
                 convMap.set(contact.id, {
                     contact,
                     lastMessage,
-                    unreadCount: contactMessages.filter(m => m.direction === 'inbound' && m.status === 'received').length
+                    // Count unread inbound messages (read === false)
+                    unreadCount: contactMessages.filter(m => m.direction === 'inbound' && m.read === false).length
                 });
             }
         });
@@ -100,7 +104,8 @@ const SMSInbox: React.FC<SMSInboxProps> = ({
             if (new Date(msg.timestamp).getTime() > new Date(conv.lastMessage.timestamp).getTime()) {
                 conv.lastMessage = msg;
             }
-            if (msg.direction === 'inbound' && msg.status === 'received') {
+            // Count unread messages (direction inbound and read === false)
+            if (msg.direction === 'inbound' && msg.read === false) {
                 conv.unreadCount++;
             }
         });
@@ -425,7 +430,16 @@ const SMSInbox: React.FC<SMSInboxProps> = ({
                         {filteredConversations.map(conv => (
                             <button
                                 key={conv.contact.id}
-                                onClick={() => {
+                                onClick={async () => {
+                                    // Mark messages as read when opening conversation
+                                    if (conv.unreadCount > 0) {
+                                        const params = conv.contact.id.startsWith('unknown-')
+                                            ? { phoneNumber: conv.contact.phone }
+                                            : { contactId: conv.contact.id };
+                                        await smsApi.markAsRead(params);
+                                        // Refresh messages to update read status
+                                        onRefreshMessages?.();
+                                    }
                                     setSelectedConversation(conv);
                                     setView('conversation');
                                 }}
