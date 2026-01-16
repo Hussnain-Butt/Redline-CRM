@@ -59,8 +59,8 @@ const SMSInbox: React.FC<SMSInboxProps> = ({
                 convMap.set(contact.id, {
                     contact,
                     lastMessage,
-                    // Count unread inbound messages (read === false)
-                    unreadCount: contactMessages.filter(m => m.direction === 'inbound' && m.read === false).length
+                    // Count unread inbound messages (read !== true handles both undefined and false)
+                    unreadCount: contactMessages.filter(m => m.direction === 'inbound' && m.read !== true).length
                 });
             }
         });
@@ -104,8 +104,8 @@ const SMSInbox: React.FC<SMSInboxProps> = ({
             if (new Date(msg.timestamp).getTime() > new Date(conv.lastMessage.timestamp).getTime()) {
                 conv.lastMessage = msg;
             }
-            // Count unread messages (direction inbound and read === false)
-            if (msg.direction === 'inbound' && msg.read === false) {
+            // Count unread messages (read !== true handles both undefined and false)
+            if (msg.direction === 'inbound' && msg.read !== true) {
                 conv.unreadCount++;
             }
         });
