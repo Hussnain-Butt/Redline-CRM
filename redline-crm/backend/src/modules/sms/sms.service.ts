@@ -1,5 +1,20 @@
 import { SMS, ISMSDocument } from './sms.model.js';
 import { Contact } from '../contacts/contact.model.js';
+import Twilio from 'twilio';
+import { env } from '../../config/env.js';
+
+// Initialize Twilio client lazily
+let twilioClient: Twilio.Twilio | null = null;
+
+function getTwilioClient(): Twilio.Twilio {
+  if (!twilioClient) {
+    if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN) {
+      throw new Error('Twilio credentials not configured');
+    }
+    twilioClient = Twilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
+  }
+  return twilioClient;
+}
 
 export class SMSService {
   async getAll(): Promise<ISMSDocument[]> {
@@ -50,6 +65,61 @@ export class SMSService {
 
   async updateStatus(twilioSid: string, status: string): Promise<ISMSDocument | null> {
     return await SMS.findOneAndUpdate({ twilioSid }, { status }, { new: true });
+  }
+
+  /**
+   * Send SMS via Twilio and save to database
+   */
+  async sendSMS(data: {
+    to: string;
+    from: string;
+    body: string;
+    contactId?: string;
+  }): Promise<{ success: boolean; data?: ISMSDocument; error?: string }> {
+    try {
+      const client = getTwilioClient();
+      
+      // Send via Twilio
+      const message = await client.messages.create({
+        to: data.to,
+        from: data.from,
+        body: data.body,
+      });
+
+      console.log('✅ SMS sent via Twilio:', message.sid);
+
+      // Auto-link to contact if contactId not provided
+      let contactId = data.contactId;
+      if (!contactId) {
+        const contact = await Contact.findOne({ phone: data.to });
+        if (contact) {
+          contactId = contact._id.toString();
+        }
+      }
+
+      // Save to database
+      const smsRecord = new SMS({
+        contactId,
+        fromNumber: data.from,
+        toNumber: data.to,
+        body: data.body,
+        direction: 'outbound',
+        status: message.status || 'sent',
+        twilioSid: message.sid,
+        timestamp: new Date(),
+      });
+      
+      const saved = await smsRecord.save();
+      console.log('✅ SMS saved to database:', saved.id);
+
+      return { success: true, data: saved };
+    } catch (error: any) {
+      console.error('❌ Failed to send SMS:', error.message);
+      return { 
+        success: false, 
+        error: error.message || 'Failed to send SMS' 
+      };
+    }
   }
 }
 

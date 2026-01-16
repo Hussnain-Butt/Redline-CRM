@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    MessageSquare, Plus, Search, Send, ArrowLeft, Phone, User, Check, CheckCheck, X
+    MessageSquare, Plus, Search, Send, ArrowLeft, Phone, User, Check, CheckCheck, X, Loader2, Clock
 } from 'lucide-react';
 import { Contact, SMSMessage, PhoneNumber, getCountryByCode, COUNTRIES } from '../types';
 import NumberSelector from './NumberSelector';
@@ -39,6 +39,7 @@ const SMSInbox: React.FC<SMSInboxProps> = ({
     const [composeNumber, setComposeNumber] = useState('');
     const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
     const [showCountryPicker, setShowCountryPicker] = useState(false);
+    const [isSending, setIsSending] = useState(false);
 
     // Group messages by contact or phone number
     const conversations: Conversation[] = React.useMemo(() => {
@@ -123,9 +124,11 @@ const SMSInbox: React.FC<SMSInboxProps> = ({
         }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
         : [];
 
-    const handleSendMessage = () => {
-        if (!newMessage.trim() || !selectedPhoneNumber) return;
+    const handleSendMessage = async () => {
+        if (!newMessage.trim() || !selectedPhoneNumber || isSending) return;
 
+        setIsSending(true);
+        
         if (view === 'compose') {
             const fullNumber = `${selectedCountry.dialCode}${composeNumber}`;
             // Find or determine contact ID
@@ -151,6 +154,8 @@ const SMSInbox: React.FC<SMSInboxProps> = ({
         }
 
         setNewMessage('');
+        // Small delay for visual feedback
+        setTimeout(() => setIsSending(false), 500);
     };
 
     const getStatusIcon = (status: SMSMessage['status']) => {
@@ -159,10 +164,14 @@ const SMSInbox: React.FC<SMSInboxProps> = ({
                 return <CheckCheck className="w-4 h-4 text-blue-500" />;
             case 'sent':
                 return <Check className="w-4 h-4 text-neutral-400" />;
+            case 'queued':
+                return <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />;
             case 'failed':
                 return <X className="w-4 h-4 text-red-500" />;
-            default:
+            case 'received':
                 return null;
+            default:
+                return <Clock className="w-4 h-4 text-neutral-300" />;
         }
     };
 
@@ -253,10 +262,10 @@ const SMSInbox: React.FC<SMSInboxProps> = ({
                         />
                         <button
                             onClick={handleSendMessage}
-                            disabled={!newMessage.trim() || !composeNumber || !selectedPhoneNumber}
+                            disabled={!newMessage.trim() || !composeNumber || !selectedPhoneNumber || isSending}
                             className="p-3 bg-red-600 text-white rounded-full hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                            <Send className="w-5 h-5" />
+                            {isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                         </button>
                     </div>
                     <p className="text-xs text-neutral-400 mt-2 text-right">
@@ -356,10 +365,10 @@ const SMSInbox: React.FC<SMSInboxProps> = ({
                         />
                         <button
                             onClick={handleSendMessage}
-                            disabled={!newMessage.trim() || !selectedPhoneNumber}
+                            disabled={!newMessage.trim() || !selectedPhoneNumber || isSending}
                             className="p-3 bg-red-600 text-white rounded-full hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                            <Send className="w-5 h-5" />
+                            {isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                         </button>
                     </div>
                 </div>

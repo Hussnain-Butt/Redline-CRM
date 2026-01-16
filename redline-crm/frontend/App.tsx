@@ -40,8 +40,6 @@ import { ViewState, Contact, CallLog, Message, PhoneNumber, SMSMessage, ContactN
 import { summarizeTranscript, generateEmailDraft } from './services/geminiService';
 import {
     fetchTwilioPhoneNumbers,
-    isTwilioConfigured,
-    sendTwilioSMS,
     TwilioPhoneNumber
 } from './services/twilioService';
 
@@ -420,33 +418,42 @@ export default function App() {
         }
     };
 
-    // SMS handling
+    // SMS handling - using secure backend endpoint
     const handleSendSMS = async (sms: Omit<SMSMessage, 'id' | 'timestamp' | 'twilioSid'>) => {
+        // Optimistic UI - show message immediately as 'sending'
+        const optimisticMessage: SMSMessage = {
+            id: `temp-${Date.now()}`,
+            ...sms,
+            status: 'queued',
+            timestamp: new Date(),
+        };
+        setContactSMS(prev => [...prev, optimisticMessage]);
+        
         try {
-            // First send via Twilio if configured
-            let twilioSid = undefined;
-            if (isTwilioConfigured()) {
-                try {
-                    const result = await sendTwilioSMS(sms.fromNumber, sms.toNumber, sms.body);
-                    console.log('✅ SMS sent via Twilio:', result.sid);
-                    twilioSid = result.sid;
-                } catch (error) {
-                    console.error('❌ Failed to send SMS via Twilio:', error);
-                    alert('Failed to send SMS. Please check your Twilio configuration.');
-                }
-            } else {
-                 console.warn('⚠️ Twilio not configured - SMS saved locally only');
-            }
-            
-            // Save to backend
-            const saved = await smsApi.create({
-                ...sms,
-                status: 'sent',
-                twilioSid
+            // Send via backend (secure - no credentials exposed)
+            const result = await smsApi.send({
+                to: sms.toNumber,
+                from: sms.fromNumber,
+                body: sms.body,
+                contactId: sms.contactId !== 'unknown' ? sms.contactId : undefined,
             });
-            setContactSMS(prev => [...prev, saved]);
-        } catch (error) {
-            console.error("Failed to send/save SMS:", error);
+            
+            if (result.success && result.data) {
+                // Replace optimistic message with real one
+                setContactSMS(prev => 
+                    prev.map(m => m.id === optimisticMessage.id ? result.data! : m)
+                );
+                console.log('✅ SMS sent successfully');
+            } else {
+                // Remove failed message and show error
+                setContactSMS(prev => prev.filter(m => m.id !== optimisticMessage.id));
+                alert(`Failed to send SMS: ${result.error}`);
+            }
+        } catch (error: any) {
+            // Remove failed message
+            setContactSMS(prev => prev.filter(m => m.id !== optimisticMessage.id));
+            console.error('Failed to send SMS:', error);
+            alert('Failed to send SMS. Please try again.');
         }
     };
 
@@ -506,33 +513,42 @@ export default function App() {
         }
     };
 
-    // SMS send (global - for inbox)
+    // SMS send (global - for inbox) using secure backend endpoint
     const handleSendSMSGlobal = async (sms: Omit<SMSMessage, 'id' | 'timestamp' | 'twilioSid'>) => {
+        // Optimistic UI - show message immediately
+        const optimisticMessage: SMSMessage = {
+            id: `temp-${Date.now()}`,
+            ...sms,
+            status: 'queued',
+            timestamp: new Date(),
+        };
+        setAllSMS(prev => [...prev, optimisticMessage]);
+        
         try {
-            // Send via Twilio API if configured (Frontend call for now)
-            let twilioSid = undefined;
-            if (isTwilioConfigured()) {
-                try {
-                    const result = await sendTwilioSMS(sms.fromNumber, sms.toNumber, sms.body);
-                    console.log('✅ SMS sent via Twilio:', result.sid);
-                    twilioSid = result.sid;
-                } catch (error) {
-                    console.error('❌ Failed to send SMS via Twilio:', error);
-                    alert('Failed to send SMS. Please check your Twilio configuration.');
-                }
-            } else {
-                 console.warn('⚠️ Twilio not configured - SMS saved locally only');
-            }
-
-            // Save to backend
-            const saved = await smsApi.create({
-                ...sms,
-                status: 'sent',
-                twilioSid
+            // Send via backend (secure - no credentials exposed)
+            const result = await smsApi.send({
+                to: sms.toNumber,
+                from: sms.fromNumber,
+                body: sms.body,
+                contactId: sms.contactId !== 'unknown' ? sms.contactId : undefined,
             });
-            setAllSMS(prev => [...prev, saved]);
-        } catch (error) {
-            console.error("Failed to save global SMS:", error);
+            
+            if (result.success && result.data) {
+                // Replace optimistic message with real one
+                setAllSMS(prev => 
+                    prev.map(m => m.id === optimisticMessage.id ? result.data! : m)
+                );
+                console.log('✅ SMS sent successfully');
+            } else {
+                // Remove failed message and show error
+                setAllSMS(prev => prev.filter(m => m.id !== optimisticMessage.id));
+                alert(`Failed to send SMS: ${result.error}`);
+            }
+        } catch (error: any) {
+            // Remove failed message
+            setAllSMS(prev => prev.filter(m => m.id !== optimisticMessage.id));
+            console.error('Failed to send SMS:', error);
+            alert('Failed to send SMS. Please try again.');
         }
     };
 
@@ -903,7 +919,7 @@ export default function App() {
                         onCall={(num) => {
                             setActiveNumber(num);
                             setDialerContactName(selectedContact.name);
-                            setCurrentView(ViewState.DIALER);
+                            navigate('/dialer');
                             setSelectedContact(null);
                         }}
                         onSMS={() => setShowSMSComposer(true)}

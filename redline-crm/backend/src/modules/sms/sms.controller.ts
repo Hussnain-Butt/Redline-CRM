@@ -28,6 +28,36 @@ export const createSMS = async (req: Request, res: Response) => {
   }
 };
 
+// Send SMS via Twilio (secure backend endpoint)
+export const sendSMS = async (req: Request, res: Response) => {
+  try {
+    const { to, from, body, contactId } = req.body;
+
+    // Validation
+    if (!to || !from || !body) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required fields: to, from, body' 
+      });
+    }
+
+    // Send via service
+    const result = await smsService.sendSMS({ to, from, body, contactId });
+
+    if (result.success) {
+      return res.status(201).json({ success: true, data: result.data });
+    } else {
+      return res.status(400).json({ success: false, error: result.error });
+    }
+  } catch (error: any) {
+    console.error('❌ SMS send endpoint error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Failed to send SMS' 
+    });
+  }
+};
+
 // Webhook for incoming SMS from Twilio
 export const handleIncomingSMS = async (req: Request, res: Response) => {
   try {

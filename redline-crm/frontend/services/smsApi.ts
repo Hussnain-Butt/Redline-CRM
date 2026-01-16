@@ -42,5 +42,41 @@ export const smsApi = {
       id: item.id || item._id,
       timestamp: new Date(item.timestamp),
     } as SMSMessage;
+  },
+
+  /**
+   * Send SMS via backend (secure - no credentials exposed)
+   */
+  send: async (data: {
+    to: string;
+    from: string;
+    body: string;
+    contactId?: string;
+  }): Promise<{ success: boolean; data?: SMSMessage; error?: string }> => {
+    try {
+      const response = await fetch(`${API_URL}/sms/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        return { success: false, error: result.error || 'Failed to send SMS' };
+      }
+
+      const item = result.data;
+      return {
+        success: true,
+        data: {
+          ...item,
+          id: item.id || item._id,
+          timestamp: new Date(item.timestamp),
+        } as SMSMessage,
+      };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Network error' };
+    }
   }
 };
