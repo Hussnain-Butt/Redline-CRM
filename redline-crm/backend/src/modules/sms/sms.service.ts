@@ -148,6 +148,19 @@ export class SMSService {
   async getUnreadCount(): Promise<number> {
     return await SMS.countDocuments({ direction: 'inbound', read: false });
   }
+
+  /**
+   * Migration: Add read field to all existing SMS documents
+   * Sets read=true for all existing messages (marking them as read since they're old)
+   */
+  async migrateAddReadField(): Promise<number> {
+    // Update all documents that don't have the read field
+    const result = await SMS.updateMany(
+      { read: { $exists: false } },
+      { $set: { read: true } }
+    );
+    return result.modifiedCount;
+  }
 }
 
 export const smsService = new SMSService();

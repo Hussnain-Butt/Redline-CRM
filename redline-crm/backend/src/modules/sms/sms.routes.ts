@@ -9,6 +9,7 @@ router.get('/contact/:contactId', smsController.getSMSByContact);
 router.post('/', smsController.createSMS);
 router.post('/send', smsController.sendSMS); // New: Send SMS via backend
 router.post('/mark-read', smsController.markAsRead); // Mark messages as read
+router.post('/migrate-read-field', smsController.migrateAddReadField); // One-time migration
 router.post('/incoming', smsController.handleIncomingSMS); // Twilio incoming SMS webhook
 router.post('/status', smsController.updateSMSStatus); // Twilio status callback webhook
 

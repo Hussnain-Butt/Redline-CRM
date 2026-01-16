@@ -131,3 +131,21 @@ export const getUnreadCount = async (_req: Request, res: Response) => {
     return res.status(500).json({ success: false, error: 'Failed to get unread count' });
   }
 };
+
+// Migration endpoint: Add read field to all existing SMS documents
+export const migrateAddReadField = async (_req: Request, res: Response) => {
+  try {
+    const result = await smsService.migrateAddReadField();
+    console.log(`✅ Migration complete: Updated ${result} documents`);
+    return res.json({ 
+      success: true, 
+      data: { 
+        updatedCount: result,
+        message: `Added read field to ${result} SMS documents` 
+      } 
+    });
+  } catch (error: any) {
+    console.error('❌ Migration failed:', error);
+    return res.status(500).json({ success: false, error: 'Migration failed: ' + error.message });
+  }
+};
