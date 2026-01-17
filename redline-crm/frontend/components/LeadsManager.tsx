@@ -23,6 +23,8 @@ import {
   FolderOpen,
   MoreVertical,
   Edit2,
+  GripVertical,
+  Move,
 } from 'lucide-react';
 import { Lead, LeadStatus, ApifyRunInfo, LeadFolder } from '../types';
 import { leadsApi, LeadStats } from '../services/leadsApi';
@@ -59,6 +61,10 @@ const LeadsManager: React.FC = () => {
   const [newFolderColor, setNewFolderColor] = useState('#dc2626');
   const [editingFolder, setEditingFolder] = useState<LeadFolder | null>(null);
   const [folderMenuId, setFolderMenuId] = useState<string | null>(null);
+
+  // Drag and Drop State
+  const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
+  const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null>(null);
 
   // Scraper State
   const [scraperOpen, setScraperOpen] = useState(false);
@@ -184,6 +190,43 @@ const LeadsManager: React.FC = () => {
     setNewFolderColor(folder.color);
     setFolderModalOpen(true);
     setFolderMenuId(null);
+  };
+
+  // ========== DRAG AND DROP HANDLERS ==========
+  const handleDragStart = (e: React.DragEvent, lead: Lead) => {
+    setDraggedLead(lead);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', lead.id);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedLead(null);
+    setDropTargetFolderId(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, folderId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDropTargetFolderId(folderId);
+  };
+
+  const handleDragLeave = () => {
+    setDropTargetFolderId(null);
+  };
+
+  const handleDropOnFolder = async (e: React.DragEvent, folderId: string) => {
+    e.preventDefault();
+    setDropTargetFolderId(null);
+    
+    if (!draggedLead) return;
+    
+    try {
+      await leadsApi.update(draggedLead.id, { folderId } as any);
+      setDraggedLead(null);
+      loadData();
+    } catch (error) {
+      console.error('Failed to move lead:', error);
+    }
   };
 
   // ========== SCRAPER HANDLERS ==========
@@ -339,10 +382,15 @@ const LeadsManager: React.FC = () => {
               <div key={folder.id} className="relative group">
                 <button
                   onClick={() => setSelectedFolderId(folder.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
+                  onDragOver={(e) => handleDragOver(e, folder.id)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDropOnFolder(e, folder.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
                     selectedFolderId === folder.id
                       ? 'bg-neutral-100'
-                      : 'hover:bg-neutral-50'
+                      : dropTargetFolderId === folder.id
+                        ? 'bg-green-100 border-2 border-dashed border-green-400 scale-105'
+                        : 'hover:bg-neutral-50'
                   }`}
                 >
                   {selectedFolderId === folder.id ? (
@@ -489,9 +537,17 @@ const LeadsManager: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
                   {filteredLeads.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-neutral-50 cursor-pointer" onClick={() => setSelectedLead(lead)}>
+                    <tr 
+                      key={lead.id} 
+                      className={`hover:bg-neutral-50 cursor-pointer transition-opacity ${draggedLead?.id === lead.id ? 'opacity-50' : ''}`}
+                      onClick={() => setSelectedLead(lead)}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, lead)}
+                      onDragEnd={handleDragEnd}
+                    >
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-3">
+                          <GripVertical className="w-4 h-4 text-neutral-400 cursor-grab" />
                           <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-500 text-white rounded-lg flex items-center justify-center font-bold">
                             {lead.name.charAt(0)}
                           </div>
