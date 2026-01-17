@@ -15,6 +15,7 @@ export interface CreateLeadDto {
   source: string;
   apifyActorId?: string;
   apifyRunId?: string;
+  folderId?: string;
   rawData?: Record<string, any>;
   status?: ILead['status'];
   notes?: string;
@@ -24,6 +25,7 @@ export interface LeadFilters {
   status?: ILead['status'];
   source?: string;
   apifyRunId?: string;
+  folderId?: string;
   search?: string;
 }
 
@@ -34,6 +36,7 @@ export const leadService = {
     if (filters.status) query.status = filters.status;
     if (filters.source) query.source = filters.source;
     if (filters.apifyRunId) query.apifyRunId = filters.apifyRunId;
+    if (filters.folderId) query.folderId = filters.folderId;
     if (filters.search) {
       query.$text = { $search: filters.search };
     }

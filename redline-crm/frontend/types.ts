@@ -103,6 +103,17 @@ export interface VoicemailTemplate {
 // ==================== LEADS (Apify Integration) ====================
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'converted' | 'rejected';
 
+export interface LeadFolder {
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+  icon?: string;
+  leadCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Lead {
   id: string;
   name: string;
@@ -119,6 +130,7 @@ export interface Lead {
   source: string;
   apifyActorId?: string;
   apifyRunId?: string;
+  folderId?: string;
   status: LeadStatus;
   notes?: string;
   createdAt: Date;

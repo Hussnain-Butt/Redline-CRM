@@ -124,7 +124,7 @@ export const apifyService = {
   /**
    * Get run results from dataset
    */
-  async getRunResults(runId: string, limit: number = 100): Promise<GoogleMapsResult[]> {
+  async getRunResults(runId: string, limit: number = 500): Promise<GoogleMapsResult[]> {
     const client = getClient();
     
     // Get run info first to get dataset ID

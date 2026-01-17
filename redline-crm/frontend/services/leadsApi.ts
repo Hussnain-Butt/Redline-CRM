@@ -1,4 +1,4 @@
-import { Lead, LeadStatus } from '../types';
+import { Lead, LeadStatus, LeadFolder } from '../types';
 
 const API_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000/api';
 
@@ -6,6 +6,7 @@ export interface LeadFilters {
   status?: LeadStatus;
   source?: string;
   runId?: string;
+  folderId?: string;
   search?: string;
 }
 
@@ -26,6 +27,7 @@ export const leadsApi = {
     if (filters.status) params.append('status', filters.status);
     if (filters.source) params.append('source', filters.source);
     if (filters.runId) params.append('runId', filters.runId);
+    if (filters.folderId) params.append('folderId', filters.folderId);
     if (filters.search) params.append('search', filters.search);
 
     const url = `${API_URL}/leads${params.toString() ? '?' + params.toString() : ''}`;
@@ -125,4 +127,50 @@ export const leadsApi = {
     const data = await response.json();
     return data.data;
   },
+
+  // ========== FOLDER METHODS ==========
+  async getFolders(): Promise<LeadFolder[]> {
+    const response = await fetch(`${API_URL}/leads/folders`);
+    if (!response.ok) throw new Error('Failed to fetch folders');
+    const data = await response.json();
+    return data.data.map((item: any) => ({
+      ...item,
+      createdAt: new Date(item.createdAt),
+      updatedAt: new Date(item.updatedAt),
+    }));
+  },
+
+  async createFolder(folder: { name: string; description?: string; color?: string }): Promise<LeadFolder> {
+    const response = await fetch(`${API_URL}/leads/folders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(folder),
+    });
+    if (!response.ok) throw new Error('Failed to create folder');
+    const data = await response.json();
+    return {
+      ...data.data,
+      createdAt: new Date(data.data.createdAt),
+      updatedAt: new Date(data.data.updatedAt),
+    };
+  },
+
+  async updateFolder(id: string, updates: Partial<LeadFolder>): Promise<LeadFolder> {
+    const response = await fetch(`${API_URL}/leads/folders/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!response.ok) throw new Error('Failed to update folder');
+    const data = await response.json();
+    return data.data;
+  },
+
+  async deleteFolder(id: string): Promise<void> {
+    const response = await fetch(`${API_URL}/leads/folders/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Failed to delete folder');
+  },
 };
+

@@ -1,4 +1,4 @@
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, Document, Types } from 'mongoose';
 
 export interface ILead {
   name: string;
@@ -15,6 +15,7 @@ export interface ILead {
   source: string;
   apifyActorId?: string;
   apifyRunId?: string;
+  folderId?: Types.ObjectId;
   rawData?: Record<string, any>;
   status: 'new' | 'contacted' | 'qualified' | 'converted' | 'rejected';
   notes?: string;
@@ -40,6 +41,7 @@ const leadSchema = new Schema<ILeadDocument>(
     source: { type: String, required: true, default: 'google-maps' },
     apifyActorId: { type: String },
     apifyRunId: { type: String },
+    folderId: { type: Schema.Types.ObjectId, ref: 'LeadFolder' },
     rawData: { type: Schema.Types.Mixed },
     status: {
       type: String,
@@ -67,6 +69,7 @@ leadSchema.index({ email: 1 });
 leadSchema.index({ status: 1 });
 leadSchema.index({ source: 1 });
 leadSchema.index({ apifyRunId: 1 });
+leadSchema.index({ folderId: 1 });
 leadSchema.index({ createdAt: -1 });
 
 export const Lead = model<ILeadDocument>('Lead', leadSchema);

@@ -1,9 +1,17 @@
 import { Router } from 'express';
 import { leadController } from './lead.controller.js';
+import { leadFolderController } from './leadFolder.controller.js';
 
 const router = Router();
 
-// Lead CRUD
+// ========== FOLDER ROUTES ==========
+router.get('/folders', leadFolderController.getAll);
+router.get('/folders/:id', leadFolderController.getById);
+router.post('/folders', leadFolderController.create);
+router.put('/folders/:id', leadFolderController.update);
+router.delete('/folders/:id', leadFolderController.delete);
+
+// ========== LEAD ROUTES ==========
 router.get('/', leadController.getAll);
 router.get('/stats', leadController.getStats);
 router.get('/:id', leadController.getById);
