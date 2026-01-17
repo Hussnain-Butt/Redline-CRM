@@ -19,7 +19,8 @@ import {
     Mic,
     Lock,
     Unlock,
-    Shield
+    Shield,
+    Target
 } from 'lucide-react';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -36,6 +37,7 @@ import CallRecordings from './components/CallRecordings';
 import AIAssistant from './components/AIAssistant';
 import LockScreen from './components/LockScreen';
 import DNCManager from './components/DNCManager';
+import LeadsManager from './components/LeadsManager';
 import { ViewState, Contact, CallLog, Message, PhoneNumber, SMSMessage, ContactNote, getCountryByCode } from './types';
 import { summarizeTranscript, generateEmailDraft } from './services/geminiService';
 import {
@@ -692,6 +694,7 @@ export default function App() {
                         <NavItem path="/reminders" icon={Bell} label="Reminders" />
                         <NavItem path="/recordings" icon={Mic} label="Recordings" />
                         <NavItem path="/settings" icon={Settings} label="Settings" />
+                        <NavItem path="/leads" icon={Target} label="Leads" />
                         <NavItem path="/dnc" icon={Shield} label="DNC Manager" />
                     </nav>
 
@@ -1104,6 +1107,11 @@ export default function App() {
                         <div className="h-full p-8">
                             <CallRecordings callLogs={callLogs} onRefresh={loadData} />
                         </div>
+                    } />
+
+                    {/* Leads Manager */}
+                    <Route path="/leads" element={
+                        <LeadsManager />
                     } />
 
                     {/* Settings */}

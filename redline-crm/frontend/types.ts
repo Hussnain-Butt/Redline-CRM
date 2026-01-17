@@ -100,6 +100,40 @@ export interface VoicemailTemplate {
   createdAt: Date;
 }
 
+// ==================== LEADS (Apify Integration) ====================
+export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'converted' | 'rejected';
+
+export interface Lead {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  company?: string;
+  website?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  rating?: number;
+  reviewCount?: number;
+  category?: string;
+  source: string;
+  apifyActorId?: string;
+  apifyRunId?: string;
+  status: LeadStatus;
+  notes?: string;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+export interface ApifyRunInfo {
+  id: string;
+  actorId: string;
+  status: string;
+  startedAt: string;
+  finishedAt?: string;
+  defaultDatasetId: string;
+}
+
 // ==================== LEGACY TYPES ====================
 export interface Message {
   id: string;

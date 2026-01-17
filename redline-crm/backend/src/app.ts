@@ -93,6 +93,14 @@ app.use('/api/scheduled-calls', scheduledCallRoutes);
 import { dncRoutes } from './modules/dnc/index.js';
 app.use('/api/dnc', dncRoutes);
 
+// Leads Module
+import { leadRoutes } from './modules/leads/index.js';
+app.use('/api/leads', leadRoutes);
+
+// Apify Integration Module
+import { apifyRoutes } from './modules/apify/index.js';
+app.use('/api/apify', apifyRoutes);
+
 // Future routes:
 // app.use('/api/contacts', contactRoutes);
 // app.use('/api/calls', callRoutes);
