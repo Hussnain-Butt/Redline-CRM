@@ -9,6 +9,7 @@ export const leadController = {
         status: req.query.status as any,
         source: req.query.source as string,
         apifyRunId: req.query.runId as string,
+        folderId: req.query.folderId as string,
         search: req.query.search as string,
       };
 
