@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Phone, Delete, Mic, MicOff, PhoneOff, User, MoreVertical, Archive, ChevronDown, AlertCircle, Loader2, Volume2, Search, Clock, PhoneIncoming, PhoneOutgoing, PhoneMissed } from 'lucide-react';
-import { CallLog, PhoneNumber, getCountryByCode, COUNTRIES } from '../types';
+import { CallLog, PhoneNumber, getCountryByCode, COUNTRIES, parsePhoneNumber } from '../types';
 import NumberSelector from './NumberSelector';
 import { useCallContext } from '../contexts/CallContext';
 
@@ -111,15 +111,17 @@ const Dialer: React.FC<DialerProps> = ({
     }
   };
 
-  // Handle initial number from props
+  // Handle initial number from props - auto-detect country code
   useEffect(() => {
     if (initialNumber) {
-      const matchingCountry = COUNTRIES.find(c => initialNumber.startsWith(c.dialCode));
-      if (matchingCountry) {
-        setSelectedCountry(matchingCountry);
-        setNumber(initialNumber.replace(matchingCountry.dialCode, '').replace(/^[\s-]/, ''));
+      // Use parsePhoneNumber for proper country detection (longer codes first)
+      const { country, localNumber } = parsePhoneNumber(initialNumber);
+      if (country) {
+        setSelectedCountry(country);
+        setNumber(localNumber);
       } else {
-        setNumber(initialNumber);
+        // No country detected, just set the number as-is
+        setNumber(initialNumber.replace(/[^\d]/g, ''));
       }
     }
   }, [initialNumber]);
@@ -325,12 +327,12 @@ const Dialer: React.FC<DialerProps> = ({
 
   const dialFromHistory = (log: CallLog) => {
     if (log.toNumber) {
-      const matchingCountry = COUNTRIES.find(c => log.toNumber!.startsWith(c.dialCode));
-      if (matchingCountry) {
-        setSelectedCountry(matchingCountry);
-        setNumber(log.toNumber.replace(matchingCountry.dialCode, '').replace(/^[\s-]/, ''));
+      const { country, localNumber } = parsePhoneNumber(log.toNumber);
+      if (country) {
+        setSelectedCountry(country);
+        setNumber(localNumber);
       } else {
-        setNumber(log.toNumber.replace(/^\+/, ''));
+        setNumber(log.toNumber.replace(/[^\d]/g, ''));
       }
     }
     setViewMode('dialer');

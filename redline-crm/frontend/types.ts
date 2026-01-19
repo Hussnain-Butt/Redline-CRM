@@ -362,6 +362,56 @@ export function getCountryByDialCode(dialCode: string) {
   return COUNTRIES.find(c => c.dialCode === dialCode);
 }
 
+/**
+ * Detect country from a phone number by matching the longest dial code first
+ * This prevents +1 (US) from matching before +1876 (Jamaica) etc.
+ */
+export function getCountryFromPhoneNumber(phoneNumber: string) {
+  if (!phoneNumber) return null;
+  
+  // Clean the phone number - ensure it starts with +
+  let cleanNumber = phoneNumber.replace(/[^\d+]/g, '');
+  if (!cleanNumber.startsWith('+')) {
+    cleanNumber = '+' + cleanNumber;
+  }
+  
+  // Sort countries by dial code length (descending) to match longer codes first
+  const sortedCountries = [...COUNTRIES].sort((a, b) => 
+    b.dialCode.length - a.dialCode.length
+  );
+  
+  // Find matching country
+  const match = sortedCountries.find(country => 
+    cleanNumber.startsWith(country.dialCode)
+  );
+  
+  return match || null;
+}
+
+/**
+ * Parse phone number and return country + local number
+ */
+export function parsePhoneNumber(phoneNumber: string): { country: typeof COUNTRIES[number] | null; localNumber: string } {
+  const country = getCountryFromPhoneNumber(phoneNumber);
+  
+  if (!country) {
+    // No country detected, return as-is
+    return { country: null, localNumber: phoneNumber.replace(/[^\d]/g, '') };
+  }
+  
+  // Remove dial code from number
+  let cleanNumber = phoneNumber.replace(/[^\d+]/g, '');
+  if (!cleanNumber.startsWith('+')) {
+    cleanNumber = '+' + cleanNumber;
+  }
+  
+  const localNumber = cleanNumber
+    .replace(country.dialCode, '')
+    .replace(/^[\s-]/, '');
+  
+  return { country, localNumber };
+}
+
 // ==================== DISPOSITION CODES ====================
 export const DISPOSITION_CODES = [
   { value: 'answered', label: 'Answered', color: 'green' },
