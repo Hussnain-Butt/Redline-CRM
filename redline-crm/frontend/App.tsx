@@ -63,6 +63,41 @@ import { scheduledCallApi } from './services/scheduledCallApi';
 import * as settingsApi from './services/settingsApi';
 import { reminderApi, Reminder } from './services/reminderApi';
 
+// Dialer Wrapper to handle navigation state (for click-to-call from leads)
+interface DialerWrapperProps {
+    activeNumber: string;
+    dialerContactName: string;
+    phoneNumbers: PhoneNumber[];
+    selectedPhoneNumber: PhoneNumber | null;
+    onPhoneNumberSelect: (p: PhoneNumber) => void;
+    onCallEnd: (log: any) => void;
+    callHistory: CallLog[];
+}
+
+function DialerWrapper(props: DialerWrapperProps) {
+    const location = useLocation();
+    const state = location.state as { phoneNumber?: string; contactName?: string } | null;
+    
+    // Use navigation state if available, otherwise use props
+    const initialNumber = state?.phoneNumber || props.activeNumber;
+    const contactName = state?.contactName || props.dialerContactName;
+    
+    return (
+        <div className="h-full p-8 flex justify-center">
+            <div className="w-full max-w-4xl h-full">
+                <Dialer
+                    onCallEnd={props.onCallEnd}
+                    initialNumber={initialNumber}
+                    phoneNumbers={props.phoneNumbers}
+                    selectedPhoneNumber={props.selectedPhoneNumber}
+                    onPhoneNumberSelect={props.onPhoneNumberSelect}
+                    contactName={contactName}
+                    callHistory={props.callHistory}
+                />
+            </div>
+        </div>
+    );
+}
 
 export default function App() {
     // React Router
@@ -1015,19 +1050,15 @@ export default function App() {
 
                     {/* Dialer */}
                     <Route path="/dialer" element={
-                        <div className="h-full p-8 flex justify-center">
-                            <div className="w-full max-w-4xl h-full">
-                                <Dialer
-                                    onCallEnd={handleCallEnd}
-                                    initialNumber={activeNumber}
-                                    phoneNumbers={phoneNumbers.filter(p => p.canCall)}
-                                    selectedPhoneNumber={selectedPhoneNumber}
-                                    onPhoneNumberSelect={setSelectedPhoneNumber}
-                                    contactName={dialerContactName}
-                                    callHistory={callLogs}
-                                />
-                            </div>
-                        </div>
+                        <DialerWrapper
+                            activeNumber={activeNumber}
+                            dialerContactName={dialerContactName}
+                            phoneNumbers={phoneNumbers.filter(p => p.canCall)}
+                            selectedPhoneNumber={selectedPhoneNumber}
+                            onPhoneNumberSelect={setSelectedPhoneNumber}
+                            onCallEnd={handleCallEnd}
+                            callHistory={callLogs}
+                        />
                     } />
 
                     {/* Contacts */}

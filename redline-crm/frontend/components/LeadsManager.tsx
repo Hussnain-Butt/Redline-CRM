@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Target,
@@ -44,6 +45,8 @@ const FOLDER_COLORS = [
 ];
 
 const LeadsManager: React.FC = () => {
+  const navigate = useNavigate();
+  
   // State
   const [leads, setLeads] = useState<Lead[]>([]);
   const [folders, setFolders] = useState<LeadFolder[]>([]);
@@ -557,8 +560,25 @@ const LeadsManager: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4">
-                        {lead.phone && <p className="text-sm text-neutral-600 flex items-center gap-1"><Phone className="w-3 h-3" />{lead.phone}</p>}
+                      <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                        {lead.phone && (
+                          <button
+                            onClick={() => {
+                              // Format phone: remove non-digits, add +1 if US number without country code
+                              let phone = lead.phone!.replace(/[^\d+]/g, '');
+                              if (!phone.startsWith('+') && phone.length === 10) {
+                                phone = '+1' + phone;
+                              } else if (!phone.startsWith('+') && phone.length === 11 && phone.startsWith('1')) {
+                                phone = '+' + phone;
+                              }
+                              navigate('/dialer', { state: { phoneNumber: phone, contactName: lead.name } });
+                            }}
+                            className="text-sm text-green-600 hover:text-green-700 hover:bg-green-50 px-2 py-1 rounded-lg flex items-center gap-1 transition-colors"
+                          >
+                            <Phone className="w-3 h-3" />
+                            {lead.phone}
+                          </button>
+                        )}
                         {lead.website && <p className="text-sm text-blue-600 flex items-center gap-1"><Globe className="w-3 h-3" /><span className="truncate max-w-[150px]">{lead.website}</span></p>}
                       </td>
                       <td className="px-4 py-4">
