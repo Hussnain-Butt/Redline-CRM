@@ -7,18 +7,41 @@ export const getPhoneNumbers = async (_req: Request, res: Response) => {
     // Return the shared TWILIO_PHONE_NUMBER from environment
     // All users use the same centralized number
     if (env.TWILIO_PHONE_NUMBER) {
+      // Detect country from phone number
+      const phoneNum = env.TWILIO_PHONE_NUMBER;
+      let country = 'US';
+      let countryName = 'United States';
+      
+      if (phoneNum.startsWith('+1')) {
+        country = 'US';
+        countryName = 'United States';
+      } else if (phoneNum.startsWith('+44')) {
+        country = 'GB';
+        countryName = 'United Kingdom';
+      } else if (phoneNum.startsWith('+92')) {
+        country = 'PK';
+        countryName = 'Pakistan';
+      }
+      
       const sharedNumber = {
+        id: 'shared-number',           // Frontend expects 'id'
         sid: 'shared-number',
-        phoneNumber: env.TWILIO_PHONE_NUMBER,
+        number: phoneNum,              // Frontend expects 'number', not 'phoneNumber'
+        phoneNumber: phoneNum,         // Keep for backwards compatibility
+        country: country,              // Frontend expects 'country', not 'countryCode'
+        countryCode: country,          // Keep for backwards compatibility
+        countryName: countryName,      // Frontend expects 'countryName'
+        label: 'Main Phone Number',    // Frontend expects 'label'
         friendlyName: 'Main Phone Number',
+        isDefault: true,
+        canCall: true,
+        canSMS: true,
         capabilities: {
           voice: true,
           sms: true,
           mms: false
         },
-        countryCode: env.TWILIO_PHONE_NUMBER.startsWith('+1') ? 'US' :
-          env.TWILIO_PHONE_NUMBER.startsWith('+44') ? 'GB' :
-          env.TWILIO_PHONE_NUMBER.startsWith('+92') ? 'PK' : 'XX'
+        createdAt: new Date()
       };
       return res.json({ success: true, data: [sharedNumber] });
     }
