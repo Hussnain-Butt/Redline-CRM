@@ -3,6 +3,7 @@ import {
     Sparkles, Send, X, Maximize2, Minimize2, ChevronDown,
     Mic, BarChart2, Users, Phone, Calendar, Lightbulb
 } from 'lucide-react';
+import apiClient from '../services/apiClient';
 
 interface Message {
     id: string;
@@ -35,8 +36,6 @@ const AIAssistant: React.FC = () => {
     const [insight, setInsight] = useState<string>("Loading personalized insights...");
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const API_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000/api';
-
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
@@ -48,9 +47,8 @@ const AIAssistant: React.FC = () => {
     useEffect(() => {
         const fetchInsight = async () => {
             try {
-                const res = await fetch(`${API_URL}/ai/insight`);
-                const data = await res.json();
-                if ((data.success || data.status === 'success') && data.data.insight) {
+                const { data } = await apiClient.get('/ai/insight');
+                if (data.success && data.data.insight) {
                     setInsight(data.data.insight);
                 }
             } catch (error) {
@@ -86,18 +84,10 @@ const AIAssistant: React.FC = () => {
                 payload.conversationId = conversationId;
             }
 
-            const res = await fetch(`${API_URL}/ai/chat`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload),
-            });
-
-            const data = await res.json();
+            const { data } = await apiClient.post('/ai/chat', payload);
             console.log('AI API Response:', data); // Debug log
 
-            if (data.success || data.status === 'success') {
+            if (data.success) {
                 const aiResponse = data.data.response;
                 setConversationId(data.data.conversation.id);
 
