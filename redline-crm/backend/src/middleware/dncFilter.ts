@@ -26,7 +26,7 @@ export async function dncFilterMiddleware(
     }
 
     // Check if number is on DNC list
-    const dncStatus = await dncService.checkPhoneNumber(targetNumber);
+    const dncStatus = await dncService.checkPhoneNumber(targetNumber, req.userId || '');
 
     if (dncStatus.isOnDNC) {
       // Number is on DNC list - block the call
@@ -66,7 +66,7 @@ export async function dncCheckMiddleware(
     const targetNumber = phoneNumber || to || phone;
 
     if (targetNumber) {
-      const dncStatus = await dncService.checkPhoneNumber(targetNumber);
+      const dncStatus = await dncService.checkPhoneNumber(targetNumber, req.userId || '');
       
       // Attach DNC status to request for later use
       (req as any).dncStatus = dncStatus;
