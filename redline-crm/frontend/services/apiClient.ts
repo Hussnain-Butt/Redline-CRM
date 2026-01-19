@@ -26,6 +26,20 @@ const apiClient = axios.create({
   },
 });
 
+// Add a request interceptor to attach the Clerk token
+apiClient.interceptors.request.use(async (config) => {
+  try {
+    // @ts-ignore - Access Clerk from window object since we're using Clerk Provider
+    const token = await window.Clerk?.session?.getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (error) {
+    console.error('Error fetching Clerk token:', error);
+  }
+  return config;
+});
+
 // Add a response interceptor to handle errors globally
 apiClient.interceptors.response.use(
   (response) => response,
