@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { phoneNumberService } from './phoneNumber.service.js';
 import { env } from '../../config/env.js';
 
-export const getPhoneNumbers = async (req: Request, res: Response) => {
+export const getPhoneNumbers = async (_req: Request, res: Response) => {
   try {
     // Return the shared TWILIO_PHONE_NUMBER from environment
     // All users use the same centralized number
