@@ -1,10 +1,30 @@
 import { Request, Response } from 'express';
 import { phoneNumberService } from './phoneNumber.service.js';
+import { env } from '../../config/env.js';
 
 export const getPhoneNumbers = async (req: Request, res: Response) => {
   try {
-    const numbers = await phoneNumberService.getAll(req.userId!);
-    return res.json({ success: true, data: numbers });
+    // Return the shared TWILIO_PHONE_NUMBER from environment
+    // All users use the same centralized number
+    if (env.TWILIO_PHONE_NUMBER) {
+      const sharedNumber = {
+        sid: 'shared-number',
+        phoneNumber: env.TWILIO_PHONE_NUMBER,
+        friendlyName: 'Main Phone Number',
+        capabilities: {
+          voice: true,
+          sms: true,
+          mms: false
+        },
+        countryCode: env.TWILIO_PHONE_NUMBER.startsWith('+1') ? 'US' :
+          env.TWILIO_PHONE_NUMBER.startsWith('+44') ? 'GB' :
+          env.TWILIO_PHONE_NUMBER.startsWith('+92') ? 'PK' : 'XX'
+      };
+      return res.json({ success: true, data: [sharedNumber] });
+    }
+    
+    // Fallback: if no env number, return empty array
+    return res.json({ success: true, data: [] });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to fetch phone numbers' });
   }
