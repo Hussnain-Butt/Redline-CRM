@@ -41,7 +41,6 @@ const phoneNumberSchema = new Schema<IPhoneNumberDocument>(
 );
 
 // Indexes
-phoneNumberSchema.index({ number: 1 });
 phoneNumberSchema.index({ twilioSid: 1 });
 
 export const PhoneNumber = model<IPhoneNumberDocument>('PhoneNumber', phoneNumberSchema);

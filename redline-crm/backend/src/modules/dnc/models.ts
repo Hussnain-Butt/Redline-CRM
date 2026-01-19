@@ -76,7 +76,6 @@ const DNCListSchema: Schema = new Schema(
 // Compound index for efficient querying
 // Note: userId can be null for global lists
 DNCListSchema.index({ phoneNumber: 1, userId: 1, source: 1 }, { unique: true });
-DNCListSchema.index({ expiryDate: 1 }); // For finding expired records
 
 export const DNCList = mongoose.model<IDNCList>('DNCList', DNCListSchema);
 
