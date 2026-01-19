@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Phone, Download, Search, Filter, Play, Calendar, Clock } from 'lucide-react';
 import { CallLog } from '../types';
 import { callApi } from '../services/callApi';
+import { API_URL } from '../services/apiClient';
 
 interface CallRecordingsProps {
     callLogs: CallLog[];
@@ -40,8 +41,7 @@ const CallRecordings: React.FC<CallRecordingsProps> = ({ callLogs, onRefresh }) 
         const match = twilioUrl.match(/RE[a-f0-9]{32}/i);
         if (match) {
             const recordingSid = match[0];
-            // Use VITE_API_URL for the backend proxy
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+            // Use centralized API_URL logic
             return `${API_URL}/calls/recording/${recordingSid}`;
         }
         return twilioUrl; // Fallback to original URL
