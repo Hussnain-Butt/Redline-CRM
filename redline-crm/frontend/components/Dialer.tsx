@@ -50,6 +50,7 @@ const Dialer: React.FC<DialerProps> = ({
     rejectIncomingCall,
     sendDTMF,
     clearError,
+    activeCallInfo,
   } = useCallContext();
 
   // Local UI state (not call-related)
@@ -227,8 +228,14 @@ const Dialer: React.FC<DialerProps> = ({
     const toNumber = getFullNumber();
     const fromNumber = selectedPhoneNumber.number;
     
+    // Only use contactName if we're calling the original number we navigated here with
+    // This prevents stale contact names when user dials a different number
+    const effectiveContactName = (initialNumber && toNumber.includes(initialNumber.replace(/[^0-9]/g, ''))) 
+      ? contactName 
+      : undefined;
+    
     playRingtone();
-    await makeCall(toNumber, fromNumber, contactName);
+    await makeCall(toNumber, fromNumber, effectiveContactName);
   };
 
   const handleHangup = () => {
@@ -287,6 +294,25 @@ const Dialer: React.FC<DialerProps> = ({
       default: return '';
     }
   };
+
+  // Get display number - use activeCallInfo when in call, otherwise use local input
+  const getDisplayNumber = () => {
+    // If we have active call info, use that (this persists across navigation)
+    if (activeCallInfo?.toNumber) {
+      return activeCallInfo.toNumber;
+    }
+    // Otherwise use local state (for dialing)
+    return getFullNumber();
+  };
+
+  // Get display name - use activeCallInfo when in call
+  const getDisplayName = () => {
+    if (activeCallInfo?.contactName) {
+      return activeCallInfo.contactName;
+    }
+    return contactName;
+  };
+
 
   const getCallTypeIcon = (type: string) => {
     switch (type) {
@@ -360,14 +386,14 @@ const Dialer: React.FC<DialerProps> = ({
 
         <div className="z-10 flex flex-col items-center mt-12 space-y-4">
           <div className="w-32 h-32 bg-neutral-800 rounded-full flex items-center justify-center border-4 border-neutral-700 shadow-xl">
-            {contactName ? (
-              <span className="text-4xl font-bold">{contactName.charAt(0)}</span>
+            {getDisplayName() ? (
+              <span className="text-4xl font-bold">{getDisplayName()!.charAt(0)}</span>
             ) : (
               <User className="w-16 h-16 text-neutral-400" />
             )}
           </div>
-          <h2 className="text-3xl font-bold tracking-tight">{contactName || getFullNumber()}</h2>
-          {contactName && <p className="text-neutral-400">{getFullNumber()}</p>}
+          <h2 className="text-3xl font-bold tracking-tight">{getDisplayName() || getDisplayNumber()}</h2>
+          {getDisplayName() && <p className="text-neutral-400">{getDisplayNumber()}</p>}
           <p className="text-red-500 font-medium animate-pulse">
             {getStatusDisplay()}
           </p>
