@@ -23,7 +23,9 @@ import {
     Shield,
     Target
 } from 'lucide-react';
-import { ProtectedRoute, SignInPage, SignUpPage } from './contexts/AuthContext';
+import { ProtectedRoute } from './contexts/AuthContext';
+import SignInPage from './pages/SignInPage';
+import SignUpPage from './pages/SignUpPage';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './components/Dashboard';
 import Dialer from './components/Dialer';
