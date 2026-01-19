@@ -9,7 +9,9 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "lint": "eslint src --ext .ts",
-    "update-webhooks": "tsx src/scripts/update-webhooks.ts"
+    "update-webhooks": "tsx src/scripts/update-webhooks.ts",
+    "clean-db": "tsx src/scripts/reset-db.ts",
+    "seed-db": "tsx src/scripts/seed-db.ts"
   },
   "dependencies": {
     "@clerk/clerk-sdk-node": "^4.13.23",

@@ -681,19 +681,6 @@ export default function App() {
         );
     };
 
-    if (!isDbReady) {
-        return (
-            <div className="flex h-screen items-center justify-center bg-neutral-900">
-                <div className="text-center">
-                    <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-white text-lg">Loading RedLine CRM...</p>
-                </div>
-            </div>
-        );
-    }
-
-
-
     // Auth Loading State
     if (!isLoaded) {
         return (
@@ -715,6 +702,18 @@ export default function App() {
                 <Route path="/sign-up/*" element={<SignUpPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+        );
+    }
+
+    // Wait for DB to be ready only for authenticated users
+    if (!isDbReady) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-neutral-900">
+                <div className="text-center">
+                    <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-white text-lg">Loading RedLine CRM...</p>
+                </div>
+            </div>
         );
     }
 
