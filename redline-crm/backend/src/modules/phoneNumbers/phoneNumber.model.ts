@@ -1,6 +1,7 @@
 import { Schema, model, Document } from 'mongoose';
 
 export interface IPhoneNumber {
+  userId: string;  // Clerk user ID for multi-tenancy
   number: string;
   country: string;
   countryName: string;
@@ -17,6 +18,7 @@ export interface IPhoneNumberDocument extends IPhoneNumber, Document {}
 
 const phoneNumberSchema = new Schema<IPhoneNumberDocument>(
   {
+    userId: { type: String, required: true, index: true },  // Clerk user ID
     number: { type: String, required: true, unique: true, trim: true },
     country: { type: String, required: true, trim: true }, // Country code, e.g., 'US'
     countryName: { type: String, required: true, trim: true },

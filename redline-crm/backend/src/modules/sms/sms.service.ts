@@ -1,5 +1,6 @@
 import { SMS, ISMSDocument } from './sms.model.js';
 import { Contact } from '../contacts/contact.model.js';
+import { PhoneNumber } from '../phoneNumbers/phoneNumber.model.js';
 import Twilio from 'twilio';
 import { env } from '../../config/env.js';
 
@@ -17,12 +18,12 @@ function getTwilioClient(): Twilio.Twilio {
 }
 
 export class SMSService {
-  async getAll(): Promise<ISMSDocument[]> {
-    return await SMS.find().sort({ timestamp: -1 });
+  async getAll(userId: string): Promise<ISMSDocument[]> {
+    return await SMS.find({ userId }).sort({ timestamp: -1 });
   }
 
-  async getByContactId(contactId: string): Promise<ISMSDocument[]> {
-    return await SMS.find({ contactId }).sort({ timestamp: 1 });
+  async getByContactId(contactId: string, userId: string): Promise<ISMSDocument[]> {
+    return await SMS.find({ contactId, userId }).sort({ timestamp: 1 });
   }
 
   async create(data: Partial<ISMSDocument>): Promise<ISMSDocument> {
@@ -32,6 +33,7 @@ export class SMSService {
 
   /**
    * Create incoming SMS and auto-link to contact if exists
+   * Scopes to the owner of the 'to' number
    */
   async createIncoming(data: {
     twilioSid: string;
@@ -41,10 +43,15 @@ export class SMSService {
     direction: string;
     status: string;
   }): Promise<ISMSDocument> {
-    // Try to find existing contact by phone number
-    const contact = await Contact.findOne({ phone: data.from });
+    // 1. Identify owner of the destination number
+    const owner = await PhoneNumber.findOne({ number: data.to });
+    const userId = owner ? owner.userId : 'system'; // Fallback if number not found
+
+    // 2. Try to find existing contact by phone number within the user's contacts
+    const contact = await Contact.findOne({ phone: data.from, userId });
     
     const smsData: Partial<ISMSDocument> = {
+      userId,
       twilioSid: data.twilioSid,
       fromNumber: data.from,
       toNumber: data.to,
@@ -58,7 +65,7 @@ export class SMSService {
     const sms = new SMS(smsData);
     const savedSMS = await sms.save();
     
-    console.log(`✅ Incoming SMS saved${contact ? ` and linked to contact: ${contact.name}` : ''}`);
+    console.log(`✅ Incoming SMS saved for user ${userId}${contact ? ` and linked to contact: ${contact.name}` : ''}`);
     
     return savedSMS;
   }
@@ -74,6 +81,7 @@ export class SMSService {
     to: string;
     from: string;
     body: string;
+    userId: string;
     contactId?: string;
   }): Promise<{ success: boolean; data?: ISMSDocument; error?: string }> {
     try {
@@ -91,7 +99,7 @@ export class SMSService {
       // Auto-link to contact if contactId not provided
       let contactId = data.contactId;
       if (!contactId) {
-        const contact = await Contact.findOne({ phone: data.to });
+        const contact = await Contact.findOne({ phone: data.to, userId: data.userId });
         if (contact) {
           contactId = contact._id.toString();
         }
@@ -99,6 +107,7 @@ export class SMSService {
 
       // Save to database - outbound messages are always marked as read
       const smsRecord = new SMS({
+        userId: data.userId,
         contactId,
         fromNumber: data.from,
         toNumber: data.to,
@@ -126,8 +135,8 @@ export class SMSService {
   /**
    * Mark all messages from a phone number or contact as read
    */
-  async markAsRead(params: { contactId?: string; phoneNumber?: string }): Promise<number> {
-    const query: any = { direction: 'inbound', read: false };
+  async markAsRead(userId: string, params: { contactId?: string; phoneNumber?: string }): Promise<number> {
+    const query: any = { userId, direction: 'inbound', read: false };
     
     if (params.contactId && !params.contactId.startsWith('unknown-')) {
       query.contactId = params.contactId;
@@ -138,15 +147,15 @@ export class SMSService {
     }
 
     const result = await SMS.updateMany(query, { read: true });
-    console.log(`✅ Marked ${result.modifiedCount} messages as read`);
+    console.log(`✅ Marked ${result.modifiedCount} messages as read for user ${userId}`);
     return result.modifiedCount;
   }
 
   /**
    * Get count of unread messages (inbound only)
    */
-  async getUnreadCount(): Promise<number> {
-    return await SMS.countDocuments({ direction: 'inbound', read: false });
+  async getUnreadCount(userId: string): Promise<number> {
+    return await SMS.countDocuments({ userId, direction: 'inbound', read: false });
   }
 
   /**

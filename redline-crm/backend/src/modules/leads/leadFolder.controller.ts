@@ -2,9 +2,9 @@ import { Request, Response } from 'express';
 import { leadFolderService } from './leadFolder.service.js';
 
 export const leadFolderController = {
-  async getAll(_req: Request, res: Response): Promise<void> {
+  async getAll(req: Request, res: Response): Promise<void> {
     try {
-      const folders = await leadFolderService.getAll();
+      const folders = await leadFolderService.getAll(req.userId!);
       res.json({ success: true, data: folders });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message });
@@ -13,7 +13,7 @@ export const leadFolderController = {
 
   async getById(req: Request, res: Response): Promise<void> {
     try {
-      const folder = await leadFolderService.getById(req.params.id);
+      const folder = await leadFolderService.getById(req.params.id, req.userId!);
       if (!folder) {
         res.status(404).json({ success: false, error: 'Folder not found' });
         return;
@@ -31,7 +31,13 @@ export const leadFolderController = {
         res.status(400).json({ success: false, error: 'Name is required' });
         return;
       }
-      const folder = await leadFolderService.create({ name, description, color, icon });
+      const folder = await leadFolderService.create({ 
+        name, 
+        description, 
+        color, 
+        icon,
+        userId: req.userId!
+      });
       res.status(201).json({ success: true, data: folder });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message });
@@ -40,7 +46,7 @@ export const leadFolderController = {
 
   async update(req: Request, res: Response): Promise<void> {
     try {
-      const folder = await leadFolderService.update(req.params.id, req.body);
+      const folder = await leadFolderService.update(req.params.id, req.userId!, req.body);
       if (!folder) {
         res.status(404).json({ success: false, error: 'Folder not found' });
         return;
@@ -53,7 +59,7 @@ export const leadFolderController = {
 
   async delete(req: Request, res: Response): Promise<void> {
     try {
-      const deleted = await leadFolderService.delete(req.params.id);
+      const deleted = await leadFolderService.delete(req.params.id, req.userId!);
       if (!deleted) {
         res.status(404).json({ success: false, error: 'Folder not found' });
         return;

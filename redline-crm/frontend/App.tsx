@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { useAuth, useUser } from '@clerk/clerk-react';
 import {
     LayoutDashboard,
     Phone,
@@ -22,7 +23,8 @@ import {
     Shield,
     Target
 } from 'lucide-react';
-import Login from './components/Login';
+import { ProtectedRoute, SignInPage, SignUpPage } from './contexts/AuthContext';
+import LandingPage from './pages/LandingPage';
 import Dashboard from './components/Dashboard';
 import Dialer from './components/Dialer';
 import Contacts from './components/Contacts';
@@ -106,10 +108,11 @@ export default function App() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // App State
-    const [isAuthenticated, setIsAuthenticated] = useState(() => {
-        return localStorage.getItem('auth_token') === 'logged_in';
-    });
+    // Clerk Auth
+    const { isLoaded, isSignedIn, signOut } = useAuth();
+    const { user } = useUser();
+    const userName = user?.firstName || user?.username || 'Admin User';
+
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
     const [callLogs, setCallLogs] = useState<CallLog[]>([]);
@@ -166,11 +169,12 @@ export default function App() {
 
     // Initialize and load data
     useEffect(() => {
+        if (!isSignedIn) return;
+
         async function init() {
             await loadData();
             setIsDbReady(true);
 
-            // Auto-sync phone numbers from Twilio if configured
             // Auto-sync phone numbers from Twilio via Backend
             try {
                 const updatedNumbers = await phoneNumberApi.sync();
@@ -187,28 +191,22 @@ export default function App() {
                 }
             } catch (error) {
                 console.warn('⚠️ Twilio sync failed (backend might not have credentials):', error);
-                // We don't block app load, just log warning
             }
         }
         init();
-        init();
-    }, []);
+    }, [isSignedIn]);
 
-    const handleLogin = () => {
-        setIsAuthenticated(true);
-        localStorage.setItem('auth_token', 'logged_in');
-    };
-
-    const handleLogout = () => {
-        setIsAuthenticated(false);
-        localStorage.removeItem('auth_token');
+    // Auth handlers using Clerk
+    const handleLogout = async () => {
+        await signOut();
+        navigate('/');
     };
 
 
 
     // SMS Polling
     useEffect(() => {
-        if (!isAuthenticated) return;
+        if (!isSignedIn) return;
         const pollSMS = async () => {
              try {
                 const backendSMS = await smsApi.getAll();
@@ -700,9 +698,28 @@ export default function App() {
 
 
 
-    // Login Guard
-    if (!isAuthenticated) {
-        return <Login onLogin={handleLogin} />;
+    // Auth Loading State
+    if (!isLoaded) {
+        return (
+            <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-neutral-400">Loading...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Public Routes (Landing, Sign In, Sign Up)
+    if (!isSignedIn) {
+        return (
+            <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/sign-in/*" element={<SignInPage />} />
+                <Route path="/sign-up/*" element={<SignUpPage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+        );
     }
 
     return (
@@ -751,9 +768,17 @@ export default function App() {
                 {/* User Profile & Actions */}
                 <div className="p-6 border-t border-neutral-800">
                     <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-neutral-700 to-neutral-600 border-2 border-neutral-500"></div>
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-neutral-700 to-neutral-600 border-2 border-neutral-500 overflow-hidden">
+                            {user?.imageUrl ? (
+                                <img src={user.imageUrl} alt={userName} className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-sm font-bold">
+                                    {userName.charAt(0)}
+                                </div>
+                            )}
+                        </div>
                         <div>
-                            <p className="text-sm font-semibold">Admin User</p>
+                            <p className="text-sm font-semibold truncate max-w-[150px]">{userName}</p>
                             <p className="text-xs text-neutral-500">{phoneNumbers.length} numbers</p>
                         </div>
                     </div>
@@ -1043,8 +1068,11 @@ export default function App() {
 
                 {/* Routes */}
                 <Routes>
+                    {/* Redirect root to dashboard for authenticated users */}
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
                     {/* Dashboard */}
-                    <Route path="/" element={
+                    <Route path="/dashboard" element={
                         <Dashboard 
                             logs={callLogs} 
                             contacts={contacts} 

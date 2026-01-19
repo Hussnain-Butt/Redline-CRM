@@ -1,6 +1,5 @@
 import { CallLog } from '../types';
-
-const API_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000/api';
+import apiClient from './apiClient';
 
 export interface CreateCallLogDTO {
   contactId?: string;
@@ -22,11 +21,7 @@ export const callApi = {
    * Get all call logs
    */
   getHistory: async (): Promise<CallLog[]> => {
-    const response = await fetch(`${API_URL}/calls`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch call history');
-    }
-    const data = await response.json();
+    const { data } = await apiClient.get('/calls');
     return data.data.map((item: any) => ({
       ...item,
       id: item.id || item._id, // Ensure id is mapped
@@ -43,18 +38,7 @@ export const callApi = {
    * Create a new call log
    */
   createLog: async (log: CreateCallLogDTO): Promise<CallLog> => {
-    const response = await fetch(`${API_URL}/calls`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(log),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to create call log');
-    }
-    const data = await response.json();
+    const { data } = await apiClient.post('/calls', log);
     const item = data.data;
     
     return {
@@ -73,11 +57,7 @@ export const callApi = {
    * Get Twilio Access Token
    */
   getToken: async (identity: string = 'user'): Promise<{ token: string; identity: string }> => {
-    const response = await fetch(`${API_URL}/calls/token?identity=${identity}`);
-    if (!response.ok) {
-        throw new Error('Failed to get token');
-    }
-    const data = await response.json();
+    const { data } = await apiClient.get('/calls/token', { params: { identity } });
     return data.data;
   }
 };

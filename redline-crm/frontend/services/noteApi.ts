@@ -1,12 +1,9 @@
 import { ContactNote } from '../types';
-
-const API_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000/api';
+import apiClient from './apiClient';
 
 export const noteApi = {
   getByContactId: async (contactId: string): Promise<ContactNote[]> => {
-    const response = await fetch(`${API_URL}/notes/${contactId}`);
-    if (!response.ok) throw new Error('Failed to fetch notes');
-    const data = await response.json();
+    const { data } = await apiClient.get(`/notes/${contactId}`);
     return data.data.map((item: any) => ({
       ...item,
       id: item.id || item._id,
@@ -16,13 +13,7 @@ export const noteApi = {
   },
 
   create: async (note: Omit<ContactNote, 'id' | 'createdAt' | 'updatedAt'>): Promise<ContactNote> => {
-    const response = await fetch(`${API_URL}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(note)
-    });
-    if (!response.ok) throw new Error('Failed to create note');
-    const data = await response.json();
+    const { data } = await apiClient.post('/notes', note);
     const item = data.data;
     return {
         ...item,
@@ -33,7 +24,6 @@ export const noteApi = {
   },
 
   delete: async (id: string): Promise<void> => {
-      const response = await fetch(`${API_URL}/notes/${id}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('Failed to delete note');
+      await apiClient.delete(`/notes/${id}`);
   }
 };

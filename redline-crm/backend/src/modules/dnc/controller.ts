@@ -68,6 +68,7 @@ export class DNCController {
       const { source = 'MANUAL', state, uploadedBy } = req.body;
 
       const result = await dncService.uploadDNCFile(
+        req.userId!,
         req.file.path,
         req.file.originalname,
         source,
@@ -103,7 +104,7 @@ export class DNCController {
       // Validate input
       checkPhoneNumberSchema.parse({ phoneNumber });
 
-      const result = await dncService.checkPhoneNumber(phoneNumber);
+      const result = await dncService.checkPhoneNumber(phoneNumber, req.userId!);
 
       res.json({
         success: true,
@@ -125,7 +126,7 @@ export class DNCController {
       // Validate input
       checkBatchSchema.parse({ phoneNumbers });
 
-      const results = await dncService.checkBatch(phoneNumbers);
+      const results = await dncService.checkBatch(phoneNumbers, req.userId!);
 
       res.json({
         success: true,
@@ -145,7 +146,7 @@ export class DNCController {
       // Validate input
       const validatedData = addInternalDNCSchema.parse(req.body);
 
-      await dncService.addToInternalDNC(validatedData);
+      await dncService.addToInternalDNC(req.userId!, validatedData);
 
       res.json({
         success: true,
@@ -168,7 +169,7 @@ export class DNCController {
       // Validate input
       removeInternalDNCSchema.parse({ phoneNumber, removedBy, removedReason });
 
-      await dncService.removeFromInternalDNC({ phoneNumber, removedBy, removedReason });
+      await dncService.removeFromInternalDNC(req.userId!, { phoneNumber, removedBy, removedReason });
 
       res.json({
         success: true,
@@ -183,9 +184,9 @@ export class DNCController {
    * Get DNC statistics
    * GET /api/dnc/stats
    */
-  async getStats(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getStats(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const stats = await dncService.getStats();
+      const stats = await dncService.getStats(req.userId!);
 
       res.json({
         success: true,
@@ -200,9 +201,9 @@ export class DNCController {
    * Remove expired DNC records
    * POST /api/dnc/cleanup
    */
-  async cleanupExpired(_req: Request, res: Response, next: NextFunction) {
+  async cleanupExpired(req: Request, res: Response, next: NextFunction) {
     try {
-      const deletedCount = await dncService.removeExpiredRecords();
+      const deletedCount = await dncService.removeExpiredRecords(req.userId!);
 
       res.json({
         success: true,

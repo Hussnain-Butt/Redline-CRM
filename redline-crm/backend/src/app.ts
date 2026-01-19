@@ -2,6 +2,7 @@ import express, { Application, Request, Response } from 'express';
 import helmet from 'helmet';
 import { corsMiddleware, isDatabaseConnected } from './config/index.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { requireAuth } from './middleware/authMiddleware.js';
 
 // Import routes
 import { reminderRoutes } from './modules/reminders/index.js';
@@ -56,50 +57,50 @@ app.use('/api/reminders', reminderRoutes);
 app.use('/api/templates', templateRoutes);
 
 // Dashboard Module
-app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/dashboard', requireAuth, dashboardRoutes);
 
 // Email Module
-app.use('/api/emails', emailRoutes);
+app.use('/api/emails', requireAuth, emailRoutes);
 
 // AI Assistant Module
-app.use('/api/ai', aiRoutes);
+app.use('/api/ai', requireAuth, aiRoutes);
 
 // Call Module
-app.use('/api/calls', callRoutes);
+app.use('/api/calls', requireAuth, callRoutes);
 
 // Settings Module
-app.use('/api/settings', settingsRoutes);
+app.use('/api/settings', requireAuth, settingsRoutes);
 
 // Contact Module
 import { contactRoutes } from './modules/contacts/index.js';
-app.use('/api/contacts', contactRoutes);
+app.use('/api/contacts', requireAuth, contactRoutes);
 
 // Phone Number Module
 import { phoneNumberRoutes } from './modules/phoneNumbers/index.js';
-app.use('/api/phone-numbers', phoneNumberRoutes);
+app.use('/api/phone-numbers', requireAuth, phoneNumberRoutes);
 
 // SMS Module
 import { smsRoutes } from './modules/sms/index.js';
-app.use('/api/sms', smsRoutes);
+app.use('/api/sms', requireAuth, smsRoutes);
 
 // Notes and Scheduled Calls
 import { noteRoutes } from './modules/notes/index.js';
 import { scheduledCallRoutes } from './modules/scheduledCalls/index.js';
 
-app.use('/api/notes', noteRoutes);
-app.use('/api/scheduled-calls', scheduledCallRoutes);
+app.use('/api/notes', requireAuth, noteRoutes);
+app.use('/api/scheduled-calls', requireAuth, scheduledCallRoutes);
 
 // DNC (Do Not Call) Module
 import { dncRoutes } from './modules/dnc/index.js';
-app.use('/api/dnc', dncRoutes);
+app.use('/api/dnc', requireAuth, dncRoutes);
 
 // Leads Module
 import { leadRoutes } from './modules/leads/index.js';
-app.use('/api/leads', leadRoutes);
+app.use('/api/leads', requireAuth, leadRoutes);
 
 // Apify Integration Module
 import { apifyRoutes } from './modules/apify/index.js';
-app.use('/api/apify', apifyRoutes);
+app.use('/api/apify', requireAuth, apifyRoutes);
 
 // Future routes:
 // app.use('/api/contacts', contactRoutes);

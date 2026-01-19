@@ -20,13 +20,13 @@ export interface FolderWithCount {
 }
 
 export const leadFolderService = {
-  async getAll(): Promise<FolderWithCount[]> {
-    const folders = await LeadFolder.find().sort({ createdAt: -1 }).lean();
+  async getAll(userId: string): Promise<FolderWithCount[]> {
+    const folders = await LeadFolder.find({ userId }).sort({ createdAt: -1 }).lean();
     
-    // Get lead counts for each folder
+    // Get lead counts for each folder, scoped by userId
     const folderIds = folders.map((f: any) => f._id);
     const counts = await Lead.aggregate([
-      { $match: { folderId: { $in: folderIds } } },
+      { $match: { folderId: { $in: folderIds }, userId } },
       { $group: { _id: '$folderId', count: { $sum: 1 } } }
     ]);
     
@@ -34,17 +34,18 @@ export const leadFolderService = {
     
     return folders.map(folder => ({
       ...folder,
-      id: folder._id.toString(),
-      leadCount: countMap.get(folder._id.toString()) || 0,
-    })) as FolderWithCount[];
+      id: (folder as any)._id.toString(),
+      leadCount: countMap.get((folder as any)._id.toString()) || 0,
+    } as any)) as FolderWithCount[];
   },
 
-  async getById(id: string): Promise<ILeadFolderDocument | null> {
-    return await LeadFolder.findById(id);
+  async getById(id: string, userId: string): Promise<ILeadFolderDocument | null> {
+    return await LeadFolder.findOne({ _id: id, userId });
   },
 
-  async create(data: CreateFolderDto): Promise<ILeadFolderDocument> {
+  async create(data: CreateFolderDto & { userId: string }): Promise<ILeadFolderDocument> {
     const folder = new LeadFolder({
+      userId: data.userId,
       name: data.name,
       description: data.description,
       color: data.color || '#dc2626',
@@ -53,18 +54,18 @@ export const leadFolderService = {
     return await folder.save();
   },
 
-  async update(id: string, data: Partial<CreateFolderDto>): Promise<ILeadFolderDocument | null> {
-    return await LeadFolder.findByIdAndUpdate(id, data, { new: true });
+  async update(id: string, userId: string, data: Partial<CreateFolderDto>): Promise<ILeadFolderDocument | null> {
+    return await LeadFolder.findOneAndUpdate({ _id: id, userId }, data, { new: true });
   },
 
-  async delete(id: string): Promise<boolean> {
-    // Also update leads to remove folderId reference
-    await Lead.updateMany({ folderId: id }, { $unset: { folderId: 1 } });
-    const result = await LeadFolder.findByIdAndDelete(id);
+  async delete(id: string, userId: string): Promise<boolean> {
+    // Also update leads to remove folderId reference, scoped by userId
+    await Lead.updateMany({ folderId: id, userId }, { $unset: { folderId: 1 } });
+    const result = await LeadFolder.findOneAndDelete({ _id: id, userId });
     return !!result;
   },
 
-  async getLeadCount(folderId: string): Promise<number> {
-    return await Lead.countDocuments({ folderId });
+  async getLeadCount(folderId: string, userId: string): Promise<number> {
+    return await Lead.countDocuments({ folderId, userId });
   },
 };

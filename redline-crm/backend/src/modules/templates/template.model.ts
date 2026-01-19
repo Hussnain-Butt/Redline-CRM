@@ -7,6 +7,7 @@ export type TemplateCategory = 'sales' | 'meeting' | 'follow-up' | 'proposal' | 
 // ==================== INTERFACE ====================
 
 export interface ITemplate {
+  userId: string;  // Clerk user ID for multi-tenancy
   name: string;
   category: TemplateCategory;
   subject?: string;
@@ -22,6 +23,7 @@ export interface ITemplateDocument extends ITemplate, Document {}
 
 const templateSchema = new Schema<ITemplateDocument>(
   {
+    userId: { type: String, required: true, index: true },  // Clerk user ID
     name: {
       type: String,
       required: [true, 'Template name is required'],

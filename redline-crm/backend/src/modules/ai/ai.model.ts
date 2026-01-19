@@ -14,6 +14,7 @@ export interface IMessage {
 }
 
 export interface IConversation {
+  userId: string;
   contactId?: Types.ObjectId;
   title: string;
   messages: IMessage[];
@@ -51,6 +52,11 @@ const messageSchema = new Schema<IMessage>(
 
 const conversationSchema = new Schema<IConversationDocument>(
   {
+    userId: {
+      type: String,
+      required: true,
+      index: true,
+    },
     contactId: {
       type: Schema.Types.ObjectId,
       ref: 'Contact',
@@ -82,7 +88,7 @@ const conversationSchema = new Schema<IConversationDocument>(
 
 // ==================== INDEXES ====================
 
-conversationSchema.index({ contactId: 1, updatedAt: -1 });
+conversationSchema.index({ userId: 1, contactId: 1, updatedAt: -1 });
 
 // ==================== MODEL ====================
 

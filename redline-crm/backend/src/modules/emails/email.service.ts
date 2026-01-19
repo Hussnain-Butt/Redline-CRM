@@ -12,79 +12,97 @@ import nodemailer from 'nodemailer';
 // ==================== EMAIL SERVICE ====================
 
 export class EmailService {
-  private transporter: nodemailer.Transporter | null = null;
+  private transporters: Map<string, nodemailer.Transporter> = new Map();
 
   constructor() {
-    // Initialize will be called after DB connection
-    this.initializeTransporter();
+    // We'll initialize transporters on-demand or during settings update
   }
 
   /**
-   * Initialize Nodemailer transporter with credentials from DB or env
+   * Get transporter for a specific user
    */
-  private async initializeTransporter() {
+  private async getTransporter(userId?: string): Promise<nodemailer.Transporter | null> {
+    // If no userId, or system fallback requested
+    if (!userId) {
+      return this.createSystemTransporter();
+    }
+
+    // Check cache
+    if (this.transporters.has(userId)) {
+      return this.transporters.get(userId)!;
+    }
+
+    // Try to create from user settings
     try {
-      // First, try to get credentials from database
       const { settingsService } = await import('../settings/settings.service.js');
-      const dbSettings = await settingsService.getEmailSettingsRaw();
+      const dbSettings = await settingsService.getEmailSettingsRaw(userId);
 
-      let smtpHost: string | undefined;
-      let smtpPort: string | undefined;
-      let smtpUser: string | undefined;
-      let smtpPass: string | undefined;
-
-      // Use DB settings if available, otherwise fall back to env variables
       if (dbSettings && dbSettings.SMTP_HOST && dbSettings.SMTP_USER && dbSettings.SMTP_PASS) {
-        smtpHost = dbSettings.SMTP_HOST;
-        smtpPort = dbSettings.SMTP_PORT || '587';
-        smtpUser = dbSettings.SMTP_USER;
-        smtpPass = dbSettings.SMTP_PASS;
-        console.log('✅ Using email credentials from database');
-      } else {
-        smtpHost = process.env.SMTP_HOST;
-        smtpPort = process.env.SMTP_PORT || '587';
-        smtpUser = process.env.SMTP_USER;
-        smtpPass = process.env.SMTP_PASS;
-        console.log('ℹ️ Using email credentials from environment variables');
-      }
-
-      // Create transporter if credentials are available
-      if (smtpHost && smtpUser && smtpPass) {
-        this.transporter = nodemailer.createTransport({
-          host: smtpHost,
-          port: parseInt(smtpPort),
-          secure: smtpPort === '465',
+        const transporter = nodemailer.createTransport({
+          host: dbSettings.SMTP_HOST,
+          port: parseInt(dbSettings.SMTP_PORT || '587'),
+          secure: dbSettings.SMTP_PORT === '465',
           auth: {
-            user: smtpUser,
-            pass: smtpPass,
+            user: dbSettings.SMTP_USER,
+            pass: dbSettings.SMTP_PASS,
           },
         });
-        console.log('✅ Nodemailer configured with SMTP settings');
-      } else {
-        console.warn('⚠️ SMTP credentials not found - emails will be saved but not sent');
+        
+        this.transporters.set(userId, transporter);
+        console.log(`✅ Using email credentials from database for user ${userId}`);
+        return transporter;
       }
     } catch (error) {
-      console.error('❌ Failed to initialize email transporter:', error);
-      console.warn('⚠️ Emails will be saved but not sent');
+      console.error(`❌ Failed to load SMTP settings for user ${userId}:`, error);
     }
+
+    // Fallback to system transporter
+    return this.createSystemTransporter();
   }
 
   /**
-   * Reinitialize transporter with updated credentials (called after settings update)
+   * Create system fallback transporter from env variables
    */
-  async reinitializeTransporter() {
-    console.log('🔄 Reinitializing email transporter with updated credentials...');
-    await this.initializeTransporter();
+  private createSystemTransporter(): nodemailer.Transporter | null {
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpPort = process.env.SMTP_PORT || '587';
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+
+    if (smtpHost && smtpUser && smtpPass) {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: parseInt(smtpPort),
+        secure: smtpPort === '465',
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      });
+      return transporter;
+    }
+
+    return null;
+  }
+
+  /**
+   * Reinitialize transporter for a specific user (called after settings update)
+   */
+  async reinitializeTransporter(userId: string) {
+    console.log(`🔄 Reinitializing email transporter for user ${userId}...`);
+    this.transporters.delete(userId);
+    await this.getTransporter(userId);
   }
 
   /**
    * Send an email via Nodemailer
    */
-  async send(data: SendEmailInput): Promise<IEmailDocument> {
+  async send(userId: string, data: SendEmailInput): Promise<IEmailDocument> {
     // 1. Create email record
     const fromEmail = process.env.EMAIL_FROM || process.env.SMTP_USER || 'system@redlinecrm.com';
     const email = new Email({
       ...data,
+      userId,
       from: fromEmail,
       status: data.scheduledAt ? 'scheduled' : 'sent',
       direction: 'outbound',
@@ -96,9 +114,10 @@ export class EmailService {
 
     // 2. Send via Nodemailer (if not scheduled)
     if (!data.scheduledAt) {
-      if (this.transporter) {
+      const transporter = await this.getTransporter(userId);
+      if (transporter) {
         try {
-          const info = await this.transporter.sendMail({
+          const info = await transporter.sendMail({
             from: fromEmail,
             to: data.to.join(', '),
             cc: data.cc?.join(', '),
@@ -146,9 +165,10 @@ export class EmailService {
   /**
    * Save a draft
    */
-  async saveDraft(data: SaveDraftInput): Promise<IEmailDocument> {
+  async saveDraft(userId: string, data: SaveDraftInput): Promise<IEmailDocument> {
     const email = new Email({
       ...data,
+      userId,
       from: 'system@redlinecrm.com',
       status: 'draft',
       direction: 'outbound',
@@ -161,7 +181,7 @@ export class EmailService {
   /**
    * Get all emails with filtering
    */
-  async getAll(query: EmailQueryInput): Promise<{
+  async getAll(userId: string, query: EmailQueryInput): Promise<{
     emails: IEmailDocument[];
     total: number;
     page: number;
@@ -170,7 +190,7 @@ export class EmailService {
   }> {
     const { page, limit, contactId, status, search, sortBy, sortOrder } = query;
 
-    const filter: FilterQuery<IEmail> = {};
+    const filter: FilterQuery<IEmail> = { userId };
     if (contactId) filter.contactId = new Types.ObjectId(contactId);
     if (status) filter.status = status;
     if (search) {
@@ -203,8 +223,8 @@ export class EmailService {
   /**
    * Get single email
    */
-  async getById(id: string): Promise<IEmailDocument> {
-    const email = await Email.findById(id);
+  async getById(id: string, userId: string): Promise<IEmailDocument> {
+    const email = await Email.findOne({ _id: id, userId });
     if (!email) {
       throw new AppError('Email not found', 404);
     }

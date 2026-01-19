@@ -1,6 +1,5 @@
 import { ApifyRunInfo, Lead } from '../types';
-
-const API_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000/api';
+import apiClient from './apiClient';
 
 export interface GoogleMapsSearchInput {
   searchQueries: string[];
@@ -26,9 +25,7 @@ export const apifyApi = {
    * Check if Apify API is configured
    */
   async checkConfig(): Promise<boolean> {
-    const response = await fetch(`${API_URL}/apify/config`);
-    if (!response.ok) throw new Error('Failed to check Apify config');
-    const data = await response.json();
+    const { data } = await apiClient.get('/apify/config');
     return data.data.configured;
   },
 
@@ -36,16 +33,7 @@ export const apifyApi = {
    * Start Google Maps scraper (async - returns immediately)
    */
   async startGoogleMapsScraper(input: GoogleMapsSearchInput): Promise<ApifyRunInfo> {
-    const response = await fetch(`${API_URL}/apify/google-maps/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to start scraper');
-    }
-    const data = await response.json();
+    const { data } = await apiClient.post('/apify/google-maps/start', input);
     return data.data;
   },
 
@@ -53,16 +41,7 @@ export const apifyApi = {
    * Run Google Maps scraper and wait for completion
    */
   async runGoogleMapsScraper(input: GoogleMapsSearchInput): Promise<ApifyRunInfo> {
-    const response = await fetch(`${API_URL}/apify/google-maps/run`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to run scraper');
-    }
-    const data = await response.json();
+    const { data } = await apiClient.post('/apify/google-maps/run', input);
     return data.data;
   },
 
@@ -70,9 +49,7 @@ export const apifyApi = {
    * Get run status
    */
   async getRunStatus(runId: string): Promise<ApifyRunInfo> {
-    const response = await fetch(`${API_URL}/apify/runs/${runId}/status`);
-    if (!response.ok) throw new Error('Failed to get run status');
-    const data = await response.json();
+    const { data } = await apiClient.get(`/apify/runs/${runId}/status`);
     return data.data;
   },
 
@@ -80,9 +57,7 @@ export const apifyApi = {
    * Get run results
    */
   async getRunResults(runId: string, limit: number = 100): Promise<RunResultsResponse> {
-    const response = await fetch(`${API_URL}/apify/runs/${runId}/results?limit=${limit}`);
-    if (!response.ok) throw new Error('Failed to get run results');
-    const data = await response.json();
+    const { data } = await apiClient.get(`/apify/runs/${runId}/results`, { params: { limit } });
     return data.data;
   },
 
@@ -90,11 +65,7 @@ export const apifyApi = {
    * Import results as leads
    */
   async importAsLeads(runId: string, limit: number = 100): Promise<ImportResult> {
-    const response = await fetch(`${API_URL}/apify/runs/${runId}/import?limit=${limit}`, {
-      method: 'POST',
-    });
-    if (!response.ok) throw new Error('Failed to import leads');
-    const data = await response.json();
+    const { data } = await apiClient.post(`/apify/runs/${runId}/import`, null, { params: { limit } });
     return data.data;
   },
 
@@ -102,9 +73,6 @@ export const apifyApi = {
    * Abort a running scraper
    */
   async abortRun(runId: string): Promise<void> {
-    const response = await fetch(`${API_URL}/apify/runs/${runId}/abort`, {
-      method: 'POST',
-    });
-    if (!response.ok) throw new Error('Failed to abort run');
+    await apiClient.post(`/apify/runs/${runId}/abort`);
   },
 };

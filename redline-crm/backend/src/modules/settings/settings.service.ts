@@ -9,8 +9,8 @@ export class SettingsService {
   /**
    * Get email settings (with password masked for security)
    */
-  async getEmailSettings(): Promise<Partial<ISettingsDocument>> {
-    let settings = await Settings.findOne();
+  async getEmailSettings(userId: string): Promise<Partial<ISettingsDocument>> {
+    let settings = await Settings.findOne({ userId });
 
     // If no settings exist in DB, return empty object
     if (!settings) {
@@ -36,18 +36,19 @@ export class SettingsService {
   /**
    * Get email settings (unmasked, for internal use)
    */
-  async getEmailSettingsRaw(): Promise<ISettingsDocument | null> {
-    return await Settings.findOne();
+  async getEmailSettingsRaw(userId: string): Promise<ISettingsDocument | null> {
+    return await Settings.findOne({ userId });
   }
 
   /**
    * Update email settings
    */
-  async updateEmailSettings(data: EmailSettingsInput): Promise<ISettingsDocument> {
+  async updateEmailSettings(userId: string, data: EmailSettingsInput): Promise<ISettingsDocument> {
     // Use findOneAndUpdate with upsert to create if doesn't exist
     const settings = await Settings.findOneAndUpdate(
-      {}, // Empty filter to match the single document
+      { userId }, // Scoped to user
       {
+        userId,
         SMTP_HOST: data.SMTP_HOST,
         SMTP_PORT: data.SMTP_PORT,
         SMTP_USER: data.SMTP_USER,
@@ -65,11 +66,11 @@ export class SettingsService {
       throw new AppError('Failed to update settings', 500);
     }
 
-    // Reinitialize email service with new credentials
+    // Reinitialize email service - note: in multi-tenant, transporter might be per-user
     const { emailService } = await import('../emails/email.service.js');
-    await emailService.reinitializeTransporter();
+    await emailService.reinitializeTransporter(userId);
 
-    console.log('✅ Email settings updated successfully');
+    console.log(`✅ Email settings updated successfully for user ${userId}`);
     return settings;
   }
 

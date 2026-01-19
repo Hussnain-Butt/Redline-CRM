@@ -13,7 +13,7 @@ export class TemplateService {
   /**
    * Create a new template
    */
-  async create(data: CreateTemplateInput): Promise<ITemplateDocument> {
+  async create(data: CreateTemplateInput & { userId: string }): Promise<ITemplateDocument> {
     const template = new Template(data);
     return await template.save();
   }
@@ -21,7 +21,7 @@ export class TemplateService {
   /**
    * Get all templates with filtering, sorting, and pagination
    */
-  async getAll(query: TemplateQueryInput): Promise<{
+  async getAll(userId: string, query: TemplateQueryInput): Promise<{
     templates: ITemplateDocument[];
     total: number;
     page: number;
@@ -31,7 +31,7 @@ export class TemplateService {
     const { page, limit, category, search, sortBy, sortOrder } = query;
 
     // Build filter
-    const filter: FilterQuery<ITemplate> = {};
+    const filter: FilterQuery<ITemplate> = { userId };
     if (category) filter.category = category;
     if (search) {
       filter.$or = [
@@ -64,8 +64,8 @@ export class TemplateService {
   /**
    * Get a single template by ID
    */
-  async getById(id: string): Promise<ITemplateDocument> {
-    const template = await Template.findById(id);
+  async getById(id: string, userId: string): Promise<ITemplateDocument> {
+    const template = await Template.findOne({ _id: id, userId });
     if (!template) {
       throw new AppError('Template not found', 404);
     }
@@ -75,8 +75,8 @@ export class TemplateService {
   /**
    * Update a template
    */
-  async update(id: string, data: UpdateTemplateInput): Promise<ITemplateDocument> {
-    const template = await Template.findById(id);
+  async update(id: string, userId: string, data: UpdateTemplateInput): Promise<ITemplateDocument> {
+    const template = await Template.findOne({ _id: id, userId });
     if (!template) {
       throw new AppError('Template not found', 404);
     }
@@ -89,8 +89,8 @@ export class TemplateService {
   /**
    * Delete a template
    */
-  async delete(id: string): Promise<void> {
-    const template = await Template.findByIdAndDelete(id);
+  async delete(id: string, userId: string): Promise<void> {
+    const template = await Template.findOneAndDelete({ _id: id, userId });
     if (!template) {
       throw new AppError('Template not found', 404);
     }
@@ -102,9 +102,10 @@ export class TemplateService {
    */
   async applyVariables(
     id: string,
+    userId: string,
     variables: Record<string, string>
   ): Promise<{ content: string; subject?: string }> {
-    const template = await this.getById(id);
+    const template = await this.getById(id, userId);
 
     let content = template.content;
     let subject = template.subject;
@@ -124,32 +125,33 @@ export class TemplateService {
   /**
    * Get templates by category
    */
-  async getByCategory(category: string): Promise<ITemplateDocument[]> {
-    return await Template.find({ category }).sort({ name: 1 });
+  async getByCategory(category: string, userId: string): Promise<ITemplateDocument[]> {
+    return await Template.find({ category, userId }).sort({ name: 1 });
   }
 
   /**
    * Get template counts by category
    */
-  async getCounts(): Promise<Record<string, number>> {
+  async getCounts(userId: string): Promise<Record<string, number>> {
     const categories = ['proposal', 'follow-up', 'welcome', 'custom'];
     const counts: Record<string, number> = {};
 
     for (const category of categories) {
-      counts[category] = await Template.countDocuments({ category });
+      counts[category] = await Template.countDocuments({ category, userId });
     }
 
-    counts.total = await Template.countDocuments();
+    counts.total = await Template.countDocuments({ userId });
     return counts;
   }
 
   /**
    * Duplicate a template
    */
-  async duplicate(id: string): Promise<ITemplateDocument> {
-    const original = await this.getById(id);
+  async duplicate(id: string, userId: string): Promise<ITemplateDocument> {
+    const original = await this.getById(id, userId);
     
     const duplicate = new Template({
+      userId,
       name: `${original.name} (Copy)`,
       category: original.category,
       subject: original.subject,

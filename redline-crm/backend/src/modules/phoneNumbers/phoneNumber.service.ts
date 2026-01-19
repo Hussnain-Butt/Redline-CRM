@@ -3,33 +3,33 @@ import { env } from '../../config/env.js';
 import { PhoneNumber, IPhoneNumberDocument } from './phoneNumber.model.js';
 
 export class PhoneNumberService {
-  async getAll(): Promise<IPhoneNumberDocument[]> {
-    return await PhoneNumber.find().sort({ isDefault: -1, createdAt: 1 });
+  async getAll(userId: string): Promise<IPhoneNumberDocument[]> {
+    return await PhoneNumber.find({ userId }).sort({ isDefault: -1, createdAt: 1 });
   }
 
-  async create(data: Partial<IPhoneNumberDocument>): Promise<IPhoneNumberDocument> {
-    // If setting as default, unset others first
+  async create(data: Partial<IPhoneNumberDocument> & { userId: string }): Promise<IPhoneNumberDocument> {
+    // If setting as default, unset others first for this user
     if (data.isDefault) {
-      await PhoneNumber.updateMany({}, { isDefault: false });
+      await PhoneNumber.updateMany({ userId: data.userId }, { isDefault: false });
     }
     const phoneNumber = new PhoneNumber(data);
     return await phoneNumber.save();
   }
 
-  async update(id: string, data: Partial<IPhoneNumberDocument>): Promise<IPhoneNumberDocument | null> {
-    // If setting as default, unset others first
+  async update(id: string, userId: string, data: Partial<IPhoneNumberDocument>): Promise<IPhoneNumberDocument | null> {
+    // If setting as default, unset others first for this user
     if (data.isDefault) {
-      await PhoneNumber.updateMany({ _id: { $ne: id } }, { isDefault: false });
+      await PhoneNumber.updateMany({ _id: { $ne: id }, userId }, { isDefault: false });
     }
-    return await PhoneNumber.findByIdAndUpdate(id, data, { new: true });
+    return await PhoneNumber.findOneAndUpdate({ _id: id, userId }, data, { new: true });
   }
 
-  async delete(id: string): Promise<boolean> {
-    const result = await PhoneNumber.findByIdAndDelete(id);
+  async delete(id: string, userId: string): Promise<boolean> {
+    const result = await PhoneNumber.findOneAndDelete({ _id: id, userId });
     return !!result;
   }
 
-  async syncWithTwilio(): Promise<IPhoneNumberDocument[]> {
+  async syncWithTwilio(userId: string): Promise<IPhoneNumberDocument[]> {
     if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN) {
       // Return empty or throw, but better to return empty for now to avoid crashing if keys missing
       console.warn('Cannot sync Twilio numbers: Credentials missing');
@@ -40,18 +40,19 @@ export class PhoneNumberService {
       const client = Twilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
       const incomingNumbers = await client.incomingPhoneNumbers.list();
       const results: IPhoneNumberDocument[] = [];
-      const existingCount = await PhoneNumber.countDocuments();
+      const existingCount = await PhoneNumber.countDocuments({ userId });
 
       for (const [index, num] of incomingNumbers.entries()) {
-        let dbNum = await PhoneNumber.findOne({ twilioSid: num.sid });
+        let dbNum = await PhoneNumber.findOne({ twilioSid: num.sid, userId });
 
         // Update or Create
         if (!dbNum) {
           // Check if number property exists
-          dbNum = await PhoneNumber.findOne({ number: num.phoneNumber });
+          dbNum = await PhoneNumber.findOne({ number: num.phoneNumber, userId });
         }
 
         const data = {
+          userId,
           number: num.phoneNumber,
           label: num.friendlyName,
           twilioSid: num.sid,
@@ -66,7 +67,7 @@ export class PhoneNumberService {
         if (dbNum) {
           // Update existing
           // Don't override isDefault unless necessary
-          const updated = await PhoneNumber.findByIdAndUpdate(dbNum._id, data, { new: true });
+          const updated = await PhoneNumber.findOneAndUpdate({ _id: (dbNum as any)._id, userId }, data, { new: true });
           if (updated) results.push(updated);
         } else {
           // Create new

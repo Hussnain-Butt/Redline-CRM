@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import { smsService } from './sms.service.js';
 
-export const getAllSMS = async (_req: Request, res: Response) => {
+export const getAllSMS = async (req: Request, res: Response) => {
   try {
-    const messages = await smsService.getAll();
+    const messages = await smsService.getAll(req.userId!);
     return res.json({ success: true, data: messages });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to fetch SMS messages' });
@@ -12,7 +12,7 @@ export const getAllSMS = async (_req: Request, res: Response) => {
 
 export const getSMSByContact = async (req: Request, res: Response) => {
   try {
-    const messages = await smsService.getByContactId(req.params.contactId);
+    const messages = await smsService.getByContactId(req.params.contactId, req.userId!);
     return res.json({ success: true, data: messages });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to fetch contact SMS' });
@@ -21,7 +21,10 @@ export const getSMSByContact = async (req: Request, res: Response) => {
 
 export const createSMS = async (req: Request, res: Response) => {
   try {
-    const sms = await smsService.create(req.body);
+    const sms = await smsService.create({
+      ...req.body,
+      userId: req.userId!
+    });
     return res.status(201).json({ success: true, data: sms });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to create SMS' });
@@ -42,7 +45,7 @@ export const sendSMS = async (req: Request, res: Response) => {
     }
 
     // Send via service
-    const result = await smsService.sendSMS({ to, from, body, contactId });
+    const result = await smsService.sendSMS({ to, from, body, userId: req.userId!, contactId });
 
     if (result.success) {
       return res.status(201).json({ success: true, data: result.data });
@@ -114,7 +117,7 @@ export const markAsRead = async (req: Request, res: Response) => {
       });
     }
 
-    const count = await smsService.markAsRead({ contactId, phoneNumber });
+    const count = await smsService.markAsRead(req.userId!, { contactId, phoneNumber });
     return res.json({ success: true, data: { markedCount: count } });
   } catch (error) {
     console.error('❌ Error marking messages as read:', error);
@@ -123,9 +126,9 @@ export const markAsRead = async (req: Request, res: Response) => {
 };
 
 // Get unread message count
-export const getUnreadCount = async (_req: Request, res: Response) => {
+export const getUnreadCount = async (req: Request, res: Response) => {
   try {
-    const count = await smsService.getUnreadCount();
+    const count = await smsService.getUnreadCount(req.userId!);
     return res.json({ success: true, data: { unreadCount: count } });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to get unread count' });

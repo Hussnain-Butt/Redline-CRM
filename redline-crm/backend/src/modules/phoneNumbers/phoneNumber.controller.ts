@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import { phoneNumberService } from './phoneNumber.service.js';
 
-export const getPhoneNumbers = async (_req: Request, res: Response) => {
+export const getPhoneNumbers = async (req: Request, res: Response) => {
   try {
-    const numbers = await phoneNumberService.getAll();
+    const numbers = await phoneNumberService.getAll(req.userId!);
     return res.json({ success: true, data: numbers });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to fetch phone numbers' });
@@ -12,7 +12,10 @@ export const getPhoneNumbers = async (_req: Request, res: Response) => {
 
 export const createPhoneNumber = async (req: Request, res: Response) => {
   try {
-    const number = await phoneNumberService.create(req.body);
+    const number = await phoneNumberService.create({
+      ...req.body,
+      userId: req.userId!
+    });
     return res.status(201).json({ success: true, data: number });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to create phone number' });
@@ -21,7 +24,7 @@ export const createPhoneNumber = async (req: Request, res: Response) => {
 
 export const updatePhoneNumber = async (req: Request, res: Response) => {
   try {
-    const number = await phoneNumberService.update(req.params.id, req.body);
+    const number = await phoneNumberService.update(req.params.id, req.userId!, req.body);
     if (!number) {
       return res.status(404).json({ success: false, error: 'Phone number not found' });
     }
@@ -33,7 +36,7 @@ export const updatePhoneNumber = async (req: Request, res: Response) => {
 
 export const deletePhoneNumber = async (req: Request, res: Response) => {
   try {
-    const success = await phoneNumberService.delete(req.params.id);
+    const success = await phoneNumberService.delete(req.params.id, req.userId!);
     if (!success) {
       return res.status(404).json({ success: false, error: 'Phone number not found' });
     }
@@ -43,9 +46,9 @@ export const deletePhoneNumber = async (req: Request, res: Response) => {
   }
 };
 
-export const syncPhoneNumbers = async (_req: Request, res: Response) => {
+export const syncPhoneNumbers = async (req: Request, res: Response) => {
   try {
-    const numbers = await phoneNumberService.syncWithTwilio();
+    const numbers = await phoneNumberService.syncWithTwilio(req.userId!);
     return res.json({ success: true, data: numbers, message: `Synced ${numbers.length} numbers` });
   } catch (error) {
     console.error(error);

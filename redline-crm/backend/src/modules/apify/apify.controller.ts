@@ -91,7 +91,7 @@ export const apifyController = {
       const limit = parseInt(req.query.limit as string) || 100;
       
       const results = await apifyService.getRunResults(runId, limit);
-      const leads = apifyService.transformToLeads(results, runId);
+      const leads = apifyService.transformToLeads(results, runId, req.userId!);
       
       return res.json({ 
         success: true, 
@@ -116,10 +116,10 @@ export const apifyController = {
       
       // Fetch results
       const results = await apifyService.getRunResults(runId, limit);
-      const leads = apifyService.transformToLeads(results, runId);
+      const leads = apifyService.transformToLeads(results, runId, req.userId!);
       
       // Bulk insert
-      const result = await leadService.bulkCreate(leads);
+      const result = await leadService.bulkCreate(leads, req.userId!);
       
       return res.json({ 
         success: true, 

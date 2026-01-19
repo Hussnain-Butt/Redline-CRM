@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ILeadFolder {
+  userId: string;  // Clerk user ID for multi-tenancy
   name: string;
   description?: string;
   color: string;
@@ -15,6 +16,7 @@ export interface ILeadFolderDocument extends ILeadFolder, Document {
 
 const leadFolderSchema = new Schema<ILeadFolderDocument>(
   {
+    userId: { type: String, required: true, index: true },  // Clerk user ID
     name: {
       type: String,
       required: true,

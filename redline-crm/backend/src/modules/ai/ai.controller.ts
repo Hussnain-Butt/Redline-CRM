@@ -16,7 +16,7 @@ import { ChatInput, ConversationQueryInput } from './ai.validation.js';
  */
 export const chat = asyncHandler(async (req: Request, res: Response) => {
   const data = req.body as ChatInput;
-  const result = await aiService.chat(data);
+  const result = await aiService.chat(req.userId!, data);
   sendSuccess(res, result);
 });
 
@@ -26,7 +26,7 @@ export const chat = asyncHandler(async (req: Request, res: Response) => {
  */
 export const getConversations = asyncHandler(async (req: Request, res: Response) => {
   const query = req.query as unknown as ConversationQueryInput;
-  const result = await aiService.getConversations(query);
+  const result = await aiService.getConversations(req.userId!, query);
 
   const pagination = calculatePagination(result.total, result.page, result.limit);
   sendPaginated(res, result.conversations, pagination);
@@ -38,7 +38,7 @@ export const getConversations = asyncHandler(async (req: Request, res: Response)
  */
 export const getConversationById = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const conversation = await aiService.getConversationById(id);
+  const conversation = await aiService.getConversationById(id, req.userId!);
   sendSuccess(res, conversation);
 });
 
@@ -46,7 +46,7 @@ export const getConversationById = asyncHandler(async (req: Request, res: Respon
  * Get proactive insight
  * GET /api/ai/insight
  */
-export const getInsight = asyncHandler(async (_req: Request, res: Response) => {
-  const insight = await aiService.getInsight();
+export const getInsight = asyncHandler(async (req: Request, res: Response) => {
+  const insight = await aiService.getInsight(req.userId!);
   sendSuccess(res, { insight });
 });

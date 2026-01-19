@@ -10,7 +10,7 @@ export class DNCService {
   /**
    * Check if a single phone number is on any DNC list
    */
-  async checkPhoneNumber(phoneNumber: string): Promise<{
+  async checkPhoneNumber(phoneNumber: string, userId: string): Promise<{
     isOnDNC: boolean;
     source?: string;
     canCall: boolean;
@@ -22,6 +22,7 @@ export class DNCService {
 
     // Check Internal DNC first (highest priority, permanent)
     const internalDNC = await InternalDNC.findOne({ 
+      userId,
       phoneNumber: normalizedNumber,
       removedDate: { $exists: false } // Not removed
     });
@@ -35,9 +36,13 @@ export class DNCService {
       };
     }
 
-    // Check National/State DNC lists
+    // Check National/State DNC lists (Global) OR User-specific DNC records
     const dncRecord = await DNCList.findOne({
       phoneNumber: normalizedNumber,
+      $or: [
+        { userId: null }, // Global registries
+        { userId: userId } // User's manual uploads
+      ],
       expiryDate: { $gt: new Date() }, // Not expired
     });
 
@@ -60,7 +65,7 @@ export class DNCService {
   /**
    * Check multiple phone numbers in batch
    */
-  async checkBatch(phoneNumbers: string[]): Promise<
+  async checkBatch(phoneNumbers: string[], userId: string): Promise<
     Array<{
       phoneNumber: string;
       isOnDNC: boolean;
@@ -70,7 +75,7 @@ export class DNCService {
   > {
     const results = await Promise.all(
       phoneNumbers.map(async (number) => {
-        const result = await this.checkPhoneNumber(number);
+        const result = await this.checkPhoneNumber(number, userId);
         return {
           phoneNumber: number,
           ...result,
@@ -85,6 +90,7 @@ export class DNCService {
    * Upload and process DNC CSV file
    */
   async uploadDNCFile(
+    userId: string,
     filePath: string,
     filename: string,
     source: 'NATIONAL' | 'STATE' | 'MANUAL',
@@ -95,6 +101,7 @@ export class DNCService {
     
     // Create upload record
     const uploadRecord = await DNCUpload.create({
+      userId,
       filename,
       source,
       state,
@@ -140,11 +147,19 @@ export class DNCService {
               const normalizedNumber = this.normalizePhoneNumber(phoneNumber);
 
               // Upsert (create or update) DNC record
+              // For MANUAL source, we associate with userId. For others, we might keep it global.
+              // Actually, per user request for multi-tenancy, almost everything is user-scoped.
+              // But National/State should generally be shared if they are standard.
+              // Let's assume National/State registries uploaded by ANY admin or user are SHARED (global).
+              // If a user uploads 'MANUAL', it's THEIR private list.
+              const recordUserId = source === 'MANUAL' ? userId : null;
+
               await DNCList.findOneAndUpdate(
-                { phoneNumber: normalizedNumber },
+                { phoneNumber: normalizedNumber, userId: recordUserId },
                 {
+                  userId: recordUserId,
                   phoneNumber: normalizedNumber,
-                  source,
+                  source: source === 'MANUAL' ? 'MANUAL_UPLOAD' : source,
                   state,
                   addedDate: new Date(),
                   expiryDate,
@@ -203,11 +218,12 @@ export class DNCService {
   /**
    * Add phone number to internal DNC list
    */
-  async addToInternalDNC(data: AddInternalDNCInput): Promise<void> {
+  async addToInternalDNC(userId: string, data: AddInternalDNCInput): Promise<void> {
     const normalizedNumber = this.normalizePhoneNumber(data.phoneNumber);
 
     // Check if already exists and not removed
     const existing = await InternalDNC.findOne({
+      userId,
       phoneNumber: normalizedNumber,
       removedDate: { $exists: false },
     });
@@ -218,6 +234,7 @@ export class DNCService {
 
     // Add to internal DNC
     await InternalDNC.create({
+      userId,
       phoneNumber: normalizedNumber,
       reason: data.reason,
       requestMethod: data.requestMethod,
@@ -232,8 +249,9 @@ export class DNCService {
     permanentExpiry.setFullYear(permanentExpiry.getFullYear() + 100); // 100 years = effectively permanent
 
     await DNCList.findOneAndUpdate(
-      { phoneNumber: normalizedNumber },
+      { phoneNumber: normalizedNumber, userId },
       {
+        userId,
         phoneNumber: normalizedNumber,
         source: 'INTERNAL',
         addedDate: new Date(),
@@ -246,10 +264,11 @@ export class DNCService {
   /**
    * Remove phone number from internal DNC list
    */
-  async removeFromInternalDNC(data: RemoveInternalDNCInput): Promise<void> {
+  async removeFromInternalDNC(userId: string, data: RemoveInternalDNCInput): Promise<void> {
     const normalizedNumber = this.normalizePhoneNumber(data.phoneNumber);
 
     const record = await InternalDNC.findOne({
+      userId,
       phoneNumber: normalizedNumber,
       removedDate: { $exists: false },
     });
@@ -266,6 +285,7 @@ export class DNCService {
 
     // Remove from DNCList if source is INTERNAL
     await DNCList.deleteOne({
+      userId,
       phoneNumber: normalizedNumber,
       source: 'INTERNAL',
     });
@@ -274,42 +294,51 @@ export class DNCService {
   /**
    * Get expired DNC records (older than 31 days)
    */
-  async getExpiredRecords(): Promise<number> {
+  async getExpiredRecords(userId?: string): Promise<number> {
     const now = new Date();
-    const expiredCount = await DNCList.countDocuments({
+    const filter: any = {
       expiryDate: { $lt: now },
       source: { $ne: 'INTERNAL' }, // Exclude internal (permanent)
-    });
+    };
 
+    if (userId) filter.userId = userId;
+
+    const expiredCount = await DNCList.countDocuments(filter);
     return expiredCount;
   }
 
   /**
    * Remove expired DNC records
    */
-  async removeExpiredRecords(): Promise<number> {
+  async removeExpiredRecords(userId?: string): Promise<number> {
     const now = new Date();
-    const result = await DNCList.deleteMany({
+    const filter: any = {
       expiryDate: { $lt: now },
       source: { $ne: 'INTERNAL' },
-    });
+    };
 
+    if (userId) filter.userId = userId;
+
+    const result = await DNCList.deleteMany(filter);
     return result.deletedCount || 0;
   }
 
   /**
    * Get DNC statistics
    */
-  async getStats() {
+  async getStats(userId: string) {
     const [totalDNC, nationalDNC, stateDNC, internalDNC, manualUploadDNC, expiredDNC, latestUpload] =
       await Promise.all([
-        DNCList.countDocuments({ expiryDate: { $gt: new Date() } }),
+        DNCList.countDocuments({ 
+            $or: [{ userId: null }, { userId }],
+            expiryDate: { $gt: new Date() } 
+        }),
         DNCList.countDocuments({ source: 'NATIONAL', expiryDate: { $gt: new Date() } }),
         DNCList.countDocuments({ source: 'STATE', expiryDate: { $gt: new Date() } }),
-        DNCList.countDocuments({ source: 'INTERNAL' }),
-        DNCList.countDocuments({ source: 'MANUAL_UPLOAD', expiryDate: { $gt: new Date() } }),
-        this.getExpiredRecords(),
-        DNCUpload.findOne().sort({ uploadDate: -1 }),
+        InternalDNC.countDocuments({ userId, removedDate: { $exists: false } }),
+        DNCList.countDocuments({ userId, source: 'MANUAL_UPLOAD', expiryDate: { $gt: new Date() } }),
+        this.getExpiredRecords(userId),
+        DNCUpload.findOne({ userId }).sort({ uploadDate: -1 }),
       ]);
 
     return {

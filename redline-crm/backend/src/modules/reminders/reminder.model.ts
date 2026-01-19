@@ -10,6 +10,7 @@ export type ReminderRepeat = 'none' | 'daily' | 'weekly' | 'monthly';
 // ==================== INTERFACE ====================
 
 export interface IReminder {
+  userId: string;  // Clerk user ID for multi-tenancy
   contactId?: Types.ObjectId;
   title: string;
   type: ReminderType;
@@ -29,6 +30,7 @@ export interface IReminderDocument extends IReminder, Document {}
 
 const reminderSchema = new Schema<IReminderDocument>(
   {
+    userId: { type: String, required: true, index: true },  // Clerk user ID
     contactId: {
       type: Schema.Types.ObjectId,
       ref: 'Contact',

@@ -23,7 +23,7 @@ export class AIService {
   /**
    * Process a chat message
    */
-  async chat(data: ChatInput): Promise<{
+  async chat(userId: string, data: ChatInput): Promise<{
     conversation: IConversationDocument;
     response: string;
   }> {
@@ -31,12 +31,13 @@ export class AIService {
 
     // 1. Retrieve or create conversation
     if (data.conversationId) {
-      conversation = await Conversation.findById(data.conversationId);
+      conversation = await Conversation.findOne({ _id: data.conversationId, userId });
       if (!conversation) {
         throw new AppError('Conversation not found', 404);
       }
     } else {
       conversation = new Conversation({
+        userId,
         contactId: data.contactId ? new Types.ObjectId(data.contactId) : undefined,
         title: data.message.substring(0, 50) + (data.message.length > 50 ? '...' : ''),
         messages: [],
@@ -133,7 +134,7 @@ export class AIService {
   /**
    * Get conversations history
    */
-  async getConversations(query: ConversationQueryInput): Promise<{
+  async getConversations(userId: string, query: ConversationQueryInput): Promise<{
     conversations: IConversationDocument[];
     total: number;
     page: number;
@@ -142,7 +143,7 @@ export class AIService {
   }> {
     const { page, limit, contactId } = query;
 
-    const filter: any = {};
+    const filter: any = { userId };
     if (contactId) filter.contactId = new Types.ObjectId(contactId);
 
     const skip = (page - 1) * limit;
@@ -167,8 +168,8 @@ export class AIService {
   /**
    * Get single conversation
    */
-  async getConversationById(id: string): Promise<IConversationDocument> {
-    const conversation = await Conversation.findById(id);
+  async getConversationById(id: string, userId: string): Promise<IConversationDocument> {
+    const conversation = await Conversation.findOne({ _id: id, userId });
     if (!conversation) {
       throw new AppError('Conversation not found', 404);
     }
@@ -178,8 +179,8 @@ export class AIService {
   /**
    * Get proactive insight
    */
-  async getInsight(): Promise<string> {
-    // In future: Analyze DB stats
+  async getInsight(_userId: string): Promise<string> {
+    // In future: Analyze DB stats for this specific user
     const insights = [
       "3 leads haven't been contacted in 7 days. Would you like to call them now?",
       "You have 5 calls scheduled for tomorrow. Prepared for the busy day?",

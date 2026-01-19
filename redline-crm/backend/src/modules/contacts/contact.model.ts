@@ -1,6 +1,7 @@
 import { Schema, model, Document } from 'mongoose';
 
 export interface IContact {
+  userId: string;  // Clerk user ID for multi-tenancy
   name: string;
   phone: string;
   email: string;
@@ -20,6 +21,7 @@ export interface IContactDocument extends IContact, Document {}
 
 const contactSchema = new Schema<IContactDocument>(
   {
+    userId: { type: String, required: true, index: true },  // Clerk user ID
     name: { type: String, required: true, trim: true },
     phone: { type: String, required: true, trim: true },
     email: { type: String, trim: true, default: '' },

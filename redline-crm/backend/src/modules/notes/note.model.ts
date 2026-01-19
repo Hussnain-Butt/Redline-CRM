@@ -1,6 +1,7 @@
 import { Schema, model, Document } from 'mongoose';
 
 export interface IContactNote {
+  userId: string;  // Clerk user ID for multi-tenancy
   contactId: string;
   content: string;
   createdBy?: string;
@@ -12,6 +13,7 @@ export interface IContactNoteDocument extends IContactNote, Document {}
 
 const contactNoteSchema = new Schema<IContactNoteDocument>(
   {
+    userId: { type: String, required: true, index: true },  // Clerk user ID
     contactId: { type: String, required: true },
     content: { type: String, required: true },
     createdBy: { type: String },

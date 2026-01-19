@@ -1,6 +1,7 @@
 import { Schema, model, Document } from 'mongoose';
 
 export interface ISMS {
+  userId: string;  // Clerk user ID for multi-tenancy
   contactId?: string; // String ID to match frontend
   fromNumber: string;
   toNumber: string;
@@ -18,6 +19,7 @@ export interface ISMSDocument extends ISMS, Document {}
 
 const smsSchema = new Schema<ISMSDocument>(
   {
+    userId: { type: String, required: true, index: true },  // Clerk user ID
     contactId: { type: String, required: false }, // Changed from ObjectId to String
     fromNumber: { type: String, required: true, trim: true },
     toNumber: { type: String, required: true, trim: true },

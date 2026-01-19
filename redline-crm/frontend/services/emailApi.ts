@@ -1,3 +1,5 @@
+import apiClient from './apiClient';
+
 export interface Email {
     id: string;
     contactId?: string;
@@ -10,8 +12,8 @@ export interface Email {
     direction: 'inbound' | 'outbound';
     createdAt: Date;
     updatedAt: Date;
-    isStarred?: boolean; // Frontend only, unless added to backend
-    isRead?: boolean;    // Frontend only, unless added to backend
+    isStarred?: boolean;
+    isRead?: boolean;
 }
 
 export interface CreateEmailDTO {
@@ -19,16 +21,12 @@ export interface CreateEmailDTO {
     subject: string;
     body: string;
     contactId?: string;
-    from?: string; // Optional, backend might default it
+    from?: string;
 }
-
-const API_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000/api';
 
 export const emailApi = {
     getAll: async (params?: { status?: string, contactId?: string }): Promise<Email[]> => {
-        const query = new URLSearchParams(params as any).toString();
-        const response = await fetch(`${API_URL}/emails?${query}`);
-        const data = await response.json();
+        const { data } = await apiClient.get('/emails', { params });
         
         if (!data.success) {
             throw new Error(data.message || 'Failed to fetch emails');
@@ -37,7 +35,7 @@ export const emailApi = {
         return data.data.map((item: any) => ({
             ...item,
             id: item.id || item._id,
-            to: Array.isArray(item.to) ? item.to : [item.to], // Ensure array
+            to: Array.isArray(item.to) ? item.to : [item.to],
             createdAt: new Date(item.createdAt),
             updatedAt: new Date(item.updatedAt)
         }));
@@ -46,17 +44,12 @@ export const emailApi = {
     create: async (email: CreateEmailDTO): Promise<Email> => {
         const payload = {
             ...email,
-            from: email.from || 'me@redline.com', // Default from if not provided
-            status: 'sent', // Simulate sending immediately
+            from: email.from || 'me@redline.com',
+            status: 'sent',
             direction: 'outbound'
         };
 
-        const response = await fetch(`${API_URL}/emails/send`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-        const data = await response.json();
+        const { data } = await apiClient.post('/emails/send', payload);
 
         if (!data.success) {
             throw new Error(data.message || 'Failed to send email');

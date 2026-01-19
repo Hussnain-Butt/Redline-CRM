@@ -1,12 +1,9 @@
 import { PhoneNumber } from '../types';
-
-const API_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000/api';
+import apiClient from './apiClient';
 
 export const phoneNumberApi = {
   getAll: async (): Promise<PhoneNumber[]> => {
-    const response = await fetch(`${API_URL}/phone-numbers`);
-    if (!response.ok) throw new Error('Failed to fetch phone numbers');
-    const data = await response.json();
+    const { data } = await apiClient.get('/phone-numbers');
     return data.data.map((item: any) => ({
       ...item,
       id: item.id || item._id, // Ensure id is mapped
@@ -15,13 +12,7 @@ export const phoneNumberApi = {
   },
 
   create: async (phoneNumber: Omit<PhoneNumber, 'id' | 'createdAt'>): Promise<PhoneNumber> => {
-    const response = await fetch(`${API_URL}/phone-numbers`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(phoneNumber),
-    });
-    if (!response.ok) throw new Error('Failed to create phone number');
-    const data = await response.json();
+    const { data } = await apiClient.post('/phone-numbers', phoneNumber);
     const item = data.data;
     return {
       ...item,
@@ -31,13 +22,7 @@ export const phoneNumberApi = {
   },
 
   update: async (id: string, updates: Partial<PhoneNumber>): Promise<PhoneNumber> => {
-    const response = await fetch(`${API_URL}/phone-numbers/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates),
-    });
-    if (!response.ok) throw new Error('Failed to update phone number');
-    const data = await response.json();
+    const { data } = await apiClient.put(`/phone-numbers/${id}`, updates);
     const item = data.data;
     return {
         ...item,
@@ -47,11 +32,7 @@ export const phoneNumberApi = {
   },
 
   sync: async (): Promise<PhoneNumber[]> => {
-    const response = await fetch(`${API_URL}/phone-numbers/sync`, {
-        method: 'POST'
-    });
-    if (!response.ok) throw new Error('Failed to sync phone numbers');
-    const data = await response.json();
+    const { data } = await apiClient.post('/phone-numbers/sync');
     return data.data.map((item: any) => ({
         ...item,
         id: item.id || item._id,
@@ -60,9 +41,6 @@ export const phoneNumberApi = {
   },
 
   delete: async (id: string): Promise<void> => {
-    const response = await fetch(`${API_URL}/phone-numbers/${id}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) throw new Error('Failed to delete phone number');
+    await apiClient.delete(`/phone-numbers/${id}`);
   }
 };

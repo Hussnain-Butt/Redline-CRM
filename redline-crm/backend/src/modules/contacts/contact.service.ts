@@ -1,12 +1,12 @@
 import { Contact, IContactDocument } from './contact.model.js';
 
 export class ContactService {
-  async getAll(): Promise<IContactDocument[]> {
-    return await Contact.find().sort({ updatedAt: -1 });
+  async getAll(userId: string): Promise<IContactDocument[]> {
+    return await Contact.find({ userId }).sort({ updatedAt: -1 });
   }
 
-  async getById(id: string): Promise<IContactDocument | null> {
-    return await Contact.findById(id);
+  async getById(id: string, userId: string): Promise<IContactDocument | null> {
+    return await Contact.findOne({ _id: id, userId });
   }
 
   async create(data: Partial<IContactDocument>): Promise<IContactDocument> {
@@ -14,18 +14,19 @@ export class ContactService {
     return await contact.save();
   }
 
-  async update(id: string, data: Partial<IContactDocument>): Promise<IContactDocument | null> {
-    return await Contact.findByIdAndUpdate(id, data, { new: true });
+  async update(id: string, userId: string, data: Partial<IContactDocument>): Promise<IContactDocument | null> {
+    return await Contact.findOneAndUpdate({ _id: id, userId }, data, { new: true });
   }
 
-  async delete(id: string): Promise<boolean> {
-    const result = await Contact.findByIdAndDelete(id);
+  async delete(id: string, userId: string): Promise<boolean> {
+    const result = await Contact.findOneAndDelete({ _id: id, userId });
     return !!result;
   }
 
-  async import(contacts: Partial<IContactDocument>[]): Promise<number> {
+  async import(contacts: Partial<IContactDocument>[], userId: string): Promise<number> {
     const validContacts = contacts.map(c => ({
         ...c,
+        userId,
         lastContacted: c.lastContacted || new Date(),
         status: c.status || 'Lead'
     }));
@@ -34,6 +35,10 @@ export class ContactService {
 
     const result = await Contact.insertMany(validContacts);
     return result.length;
+  }
+
+  async count(userId: string): Promise<number> {
+    return await Contact.countDocuments({ userId });
   }
 }
 

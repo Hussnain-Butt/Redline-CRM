@@ -21,7 +21,7 @@ import {
  */
 export const createCall = asyncHandler(async (req: Request, res: Response) => {
   const data = req.body as CreateCallInput;
-  const call = await callService.create(data);
+  const call = await callService.create({ ...data, userId: req.userId! });
   sendCreated(res, call, 'Call log created successfully');
 });
 
@@ -31,7 +31,7 @@ export const createCall = asyncHandler(async (req: Request, res: Response) => {
  */
 export const getCalls = asyncHandler(async (req: Request, res: Response) => {
   const query = req.query as unknown as CallQueryInput;
-  const result = await callService.getAll(query);
+  const result = await callService.getAll(req.userId!, query);
 
   const pagination = calculatePagination(result.total, result.page, result.limit);
   sendPaginated(res, result.calls, pagination);
@@ -43,7 +43,7 @@ export const getCalls = asyncHandler(async (req: Request, res: Response) => {
  */
 export const getCallById = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const call = await callService.getById(id);
+  const call = await callService.getById(id, req.userId!);
   sendSuccess(res, call);
 });
 
@@ -54,7 +54,7 @@ export const getCallById = asyncHandler(async (req: Request, res: Response) => {
 export const updateCall = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   const data = req.body as UpdateCallInput;
-  const call = await callService.update(id, data);
+  const call = await callService.update(id, req.userId!, data);
   sendSuccess(res, call, 'Call log updated successfully');
 });
 
@@ -63,7 +63,7 @@ export const updateCall = asyncHandler(async (req: Request, res: Response) => {
  * GET /api/calls/token
  */
 export const getVoiceToken = asyncHandler(async (req: Request, res: Response) => {
-  const identity = (req.query.identity as string) || 'user';
+  const identity = (req.query.identity as string) || req.userId || 'user';
   const tokenData = callService.generateToken(identity);
   sendSuccess(res, tokenData);
 });

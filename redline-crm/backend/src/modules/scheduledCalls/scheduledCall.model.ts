@@ -1,6 +1,7 @@
 import { Schema, model, Document } from 'mongoose';
 
 export interface IScheduledCall {
+  userId: string;
   contactId: string;
   scheduledAt: Date;
   notes?: string;
@@ -14,6 +15,7 @@ export interface IScheduledCallDocument extends IScheduledCall, Document {}
 
 const scheduledCallSchema = new Schema<IScheduledCallDocument>(
   {
+    userId: { type: String, required: true, index: true },
     contactId: { type: String, required: true },
     scheduledAt: { type: Date, required: true },
     notes: { type: String },
@@ -36,7 +38,7 @@ const scheduledCallSchema = new Schema<IScheduledCallDocument>(
   }
 );
 
-scheduledCallSchema.index({ contactId: 1, scheduledAt: 1 });
-scheduledCallSchema.index({ scheduledAt: 1 });
+scheduledCallSchema.index({ userId: 1, contactId: 1, scheduledAt: 1 });
+scheduledCallSchema.index({ userId: 1, scheduledAt: 1 });
 
 export const ScheduledCall = model<IScheduledCallDocument>('ScheduledCall', scheduledCallSchema);

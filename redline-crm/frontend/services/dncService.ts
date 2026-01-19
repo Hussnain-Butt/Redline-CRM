@@ -1,9 +1,4 @@
-/**
- * DNC API Service
- * All API calls for DNC functionality
- */
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import apiClient from './apiClient';
 
 export interface DNCCheckResult {
   isOnDNC: boolean;
@@ -58,60 +53,35 @@ class DNCService {
       formData.append('uploadedBy', uploadedBy);
     }
 
-    const response = await fetch(`${API_BASE_URL}/dnc/upload`, {
-      method: 'POST',
-      body: formData,
+    const { data } = await apiClient.post('/dnc/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Upload failed');
-    }
-
-    const result = await response.json();
-    return result.data;
+    return data.data;
   }
 
   /**
    * Check single phone number
    */
   async checkPhoneNumber(phoneNumber: string): Promise<DNCCheckResult> {
-    const response = await fetch(`${API_BASE_URL}/dnc/check/${encodeURIComponent(phoneNumber)}`);
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Check failed');
-    }
-
-    const result = await response.json();
-    return result.data;
+    const { data } = await apiClient.get(`/dnc/check/${encodeURIComponent(phoneNumber)}`);
+    return data.data;
   }
 
   /**
    * Check batch of phone numbers
    */
   async checkBatch(phoneNumbers: string[]): Promise<Array<DNCCheckResult & { phoneNumber: string }>> {
-    const response = await fetch(`${API_BASE_URL}/dnc/check-batch`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ phoneNumbers }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Batch check failed');
-    }
-
-    const result = await response.json();
-    return result.data;
+    const { data } = await apiClient.post('/dnc/check-batch', { phoneNumbers });
+    return data.data;
   }
 
   /**
    * Add to internal DNC list
    */
-  async addToInternalDNC(data: {
+  async addToInternalDNC(payload: {
     phoneNumber: string;
     reason: string;
     requestMethod: 'PHONE_CALL' | 'TEXT_MESSAGE' | 'EMAIL' | 'WEB_FORM' | 'MANUAL';
@@ -119,68 +89,32 @@ class DNCService {
     processedBy?: string;
     notes?: string;
   }): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/dnc/internal/add`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to add to internal DNC');
-    }
+    await apiClient.post('/dnc/internal/add', payload);
   }
 
   /**
    * Remove from internal DNC list
    */
   async removeFromInternalDNC(phoneNumber: string, removedBy: string, removedReason: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/dnc/internal/${encodeURIComponent(phoneNumber)}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ removedBy, removedReason }),
+    await apiClient.delete(`/dnc/internal/${encodeURIComponent(phoneNumber)}`, {
+      data: { removedBy, removedReason },
     });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to remove from internal DNC');
-    }
   }
 
   /**
    * Get DNC statistics
    */
   async getStats(): Promise<DNCStats> {
-    const response = await fetch(`${API_BASE_URL}/dnc/stats`);
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to get stats');
-    }
-
-    const result = await response.json();
-    return result.data;
+    const { data } = await apiClient.get('/dnc/stats');
+    return data.data;
   }
 
   /**
    * Cleanup expired records
    */
   async cleanupExpired(): Promise<{ deletedCount: number }> {
-    const response = await fetch(`${API_BASE_URL}/dnc/cleanup`, {
-      method: 'POST',
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Cleanup failed');
-    }
-
-    const result = await response.json();
-    return result.data;
+    const { data } = await apiClient.post('/dnc/cleanup');
+    return data.data;
   }
 }
 

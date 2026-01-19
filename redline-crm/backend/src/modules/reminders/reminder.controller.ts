@@ -23,7 +23,7 @@ import {
  */
 export const createReminder = asyncHandler(async (req: Request, res: Response) => {
   const data = req.body as CreateReminderInput;
-  const reminder = await reminderService.create(data);
+  const reminder = await reminderService.create({ ...data, userId: req.userId! });
   sendCreated(res, reminder, 'Reminder created successfully');
 });
 
@@ -33,7 +33,7 @@ export const createReminder = asyncHandler(async (req: Request, res: Response) =
  */
 export const getReminders = asyncHandler(async (req: Request, res: Response) => {
   const query = req.query as unknown as ReminderQueryInput;
-  const result = await reminderService.getAll(query);
+  const result = await reminderService.getAll(req.userId!, query);
 
   const pagination = calculatePagination(result.total, result.page, result.limit);
   sendPaginated(res, result.reminders, pagination);
@@ -45,7 +45,7 @@ export const getReminders = asyncHandler(async (req: Request, res: Response) => 
  */
 export const getReminderById = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const reminder = await reminderService.getById(id);
+  const reminder = await reminderService.getById(id, req.userId!);
   sendSuccess(res, reminder);
 });
 
@@ -56,7 +56,7 @@ export const getReminderById = asyncHandler(async (req: Request, res: Response) 
 export const updateReminder = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   const data = req.body as UpdateReminderInput;
-  const reminder = await reminderService.update(id, data);
+  const reminder = await reminderService.update(id, req.userId!, data);
   sendSuccess(res, reminder, 'Reminder updated successfully');
 });
 
@@ -66,7 +66,7 @@ export const updateReminder = asyncHandler(async (req: Request, res: Response) =
  */
 export const deleteReminder = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  await reminderService.delete(id);
+  await reminderService.delete(id, req.userId!);
   sendNoContent(res);
 });
 
@@ -77,7 +77,7 @@ export const deleteReminder = asyncHandler(async (req: Request, res: Response) =
 export const updateReminderStatus = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   const { status } = req.body as UpdateStatusInput;
-  const reminder = await reminderService.updateStatus(id, status);
+  const reminder = await reminderService.updateStatus(id, req.userId!, status);
   sendSuccess(res, reminder, 'Reminder status updated');
 });
 
@@ -85,8 +85,8 @@ export const updateReminderStatus = asyncHandler(async (req: Request, res: Respo
  * Get today's reminders
  * GET /api/reminders/today
  */
-export const getTodayReminders = asyncHandler(async (_req: Request, res: Response) => {
-  const reminders = await reminderService.getToday();
+export const getTodayReminders = asyncHandler(async (req: Request, res: Response) => {
+  const reminders = await reminderService.getToday(req.userId!);
   sendSuccess(res, reminders);
 });
 
@@ -94,8 +94,8 @@ export const getTodayReminders = asyncHandler(async (_req: Request, res: Respons
  * Get overdue reminders
  * GET /api/reminders/overdue
  */
-export const getOverdueReminders = asyncHandler(async (_req: Request, res: Response) => {
-  const reminders = await reminderService.getOverdue();
+export const getOverdueReminders = asyncHandler(async (req: Request, res: Response) => {
+  const reminders = await reminderService.getOverdue(req.userId!);
   sendSuccess(res, reminders);
 });
 
@@ -103,8 +103,8 @@ export const getOverdueReminders = asyncHandler(async (_req: Request, res: Respo
  * Get upcoming reminders (next 7 days)
  * GET /api/reminders/upcoming
  */
-export const getUpcomingReminders = asyncHandler(async (_req: Request, res: Response) => {
-  const reminders = await reminderService.getUpcoming();
+export const getUpcomingReminders = asyncHandler(async (req: Request, res: Response) => {
+  const reminders = await reminderService.getUpcoming(req.userId!);
   sendSuccess(res, reminders);
 });
 
@@ -112,7 +112,7 @@ export const getUpcomingReminders = asyncHandler(async (_req: Request, res: Resp
  * Get reminder counts
  * GET /api/reminders/counts
  */
-export const getReminderCounts = asyncHandler(async (_req: Request, res: Response) => {
-  const counts = await reminderService.getCounts();
+export const getReminderCounts = asyncHandler(async (req: Request, res: Response) => {
+  const counts = await reminderService.getCounts(req.userId!);
   sendSuccess(res, counts);
 });

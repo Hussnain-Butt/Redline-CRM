@@ -12,6 +12,7 @@
     "update-webhooks": "tsx src/scripts/update-webhooks.ts"
   },
   "dependencies": {
+    "@clerk/clerk-sdk-node": "^4.13.23",
     "@google/generative-ai": "^0.24.1",
     "apify-client": "^2.21.0",
     "cors": "^2.8.5",

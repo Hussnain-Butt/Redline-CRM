@@ -150,8 +150,9 @@ export const apifyService = {
   /**
    * Transform Google Maps results to Lead format
    */
-  transformToLeads(results: GoogleMapsResult[], runId: string): any[] {
+  transformToLeads(results: GoogleMapsResult[], runId: string, userId: string): any[] {
     return results.map(item => ({
+      userId,
       name: item.title || 'Unknown',
       phone: item.phone || undefined,
       website: item.website || undefined,

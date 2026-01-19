@@ -1,30 +1,30 @@
 import { reminderService } from '../reminders/reminder.service.js';
 import { templateService } from '../templates/template.service.js';
-// In future: import { contactService } from '../contacts/contact.service.js';
-// In future: import { callService } from '../calls/call.service.js';
+import { contactService } from '../contacts/contact.service.js';
+import { callService } from '../calls/call.service.js';
 
 export class DashboardService {
   /**
    * Get main dashboard statistics
    */
-  async getStats() {
-    const reminderCounts = await reminderService.getCounts();
-    const templateCounts = await templateService.getCounts();
-
-    // Placeholder for when Contact and Call modules are ready
-    const contactCount = 0; // await contactService.count();
-    const callCount = 0; // await callService.count();
+  async getStats(userId: string) {
+    const [reminderCounts, templateCounts, contactTotal, callTotal] = await Promise.all([
+      reminderService.getCounts(userId),
+      templateService.getCounts(userId),
+      contactService.count(userId),
+      callService.count(userId)
+    ]);
 
     return {
       reminders: reminderCounts,
       templates: templateCounts,
       contacts: {
-        total: contactCount,
-        leads: 0,
+        total: contactTotal,
+        leads: 0, // In future: filter by status
         customers: 0,
       },
       calls: {
-        total: callCount,
+        total: callTotal,
         inbound: 0,
         outbound: 0,
         missed: 0,
@@ -35,9 +35,9 @@ export class DashboardService {
   /**
    * Get today's overview
    */
-  async getTodayOverview() {
-    const todaysReminders = await reminderService.getToday();
-    const overdueReminders = await reminderService.getOverdue();
+  async getTodayOverview(userId: string) {
+    const todaysReminders = await reminderService.getToday(userId);
+    const overdueReminders = await reminderService.getOverdue(userId);
 
     return {
       tasks: todaysReminders,
@@ -52,7 +52,8 @@ export class DashboardService {
   /**
    * Get simplified AI insights (placeholder for now)
    */
-  async getInsights() {
+  async getInsights(_userId: string) {
+    // Note: userId passed if needed for personalized insights
     return [
       {
         type: 'suggestion',

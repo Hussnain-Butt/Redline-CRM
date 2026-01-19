@@ -7,8 +7,8 @@ import { sendSuccess } from '../../shared/utils/response.js';
  * Get core dashboard stats
  * GET /api/dashboard/stats
  */
-export const getDashboardStats = asyncHandler(async (_req: Request, res: Response) => {
-  const stats = await dashboardService.getStats();
+export const getDashboardStats = asyncHandler(async (req: Request, res: Response) => {
+  const stats = await dashboardService.getStats(req.userId!);
   sendSuccess(res, stats);
 });
 
@@ -16,8 +16,8 @@ export const getDashboardStats = asyncHandler(async (_req: Request, res: Respons
  * Get today's overview (widgets)
  * GET /api/dashboard/today
  */
-export const getTodayOverview = asyncHandler(async (_req: Request, res: Response) => {
-  const data = await dashboardService.getTodayOverview();
+export const getTodayOverview = asyncHandler(async (req: Request, res: Response) => {
+  const data = await dashboardService.getTodayOverview(req.userId!);
   sendSuccess(res, data);
 });
 
@@ -25,7 +25,7 @@ export const getTodayOverview = asyncHandler(async (_req: Request, res: Response
  * Get AI insights
  * GET /api/dashboard/insights
  */
-export const getDashboardInsights = asyncHandler(async (_req: Request, res: Response) => {
-  const insights = await dashboardService.getInsights();
+export const getDashboardInsights = asyncHandler(async (req: Request, res: Response) => {
+  const insights = await dashboardService.getInsights(req.userId!);
   sendSuccess(res, insights);
 });

@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 // ==================== SETTINGS INTERFACE ====================
 
 export interface ISettings {
+  userId: string;
   SMTP_HOST?: string;
   SMTP_PORT?: string;
   SMTP_USER?: string;
@@ -20,6 +21,12 @@ export interface ISettingsDocument extends ISettings, Document {
 
 const settingsSchema = new Schema<ISettingsDocument>(
   {
+    userId: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+    },
     SMTP_HOST: {
       type: String,
       default: '',

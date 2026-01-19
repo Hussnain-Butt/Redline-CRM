@@ -1,7 +1,11 @@
-export { Lead, ILead, ILeadDocument } from './lead.model.js';
-export { LeadFolder, ILeadFolder, ILeadFolderDocument } from './leadFolder.model.js';
-export { leadService, CreateLeadDto, LeadFilters } from './lead.service.js';
-export { leadFolderService, CreateFolderDto, FolderWithCount } from './leadFolder.service.js';
+export { Lead } from './lead.model.js';
+export type { ILead, ILeadDocument } from './lead.model.js';
+export { LeadFolder } from './leadFolder.model.js';
+export type { ILeadFolder, ILeadFolderDocument } from './leadFolder.model.js';
+export { leadService } from './lead.service.js';
+export type { CreateLeadDto, LeadFilters } from './lead.service.js';
+export { leadFolderService } from './leadFolder.service.js';
+export type { CreateFolderDto, FolderWithCount } from './leadFolder.service.js';
 export { leadController } from './lead.controller.js';
 export { leadFolderController } from './leadFolder.controller.js';
 export { leadRoutes } from './lead.routes.js';

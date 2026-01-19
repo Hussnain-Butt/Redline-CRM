@@ -5,6 +5,7 @@ import mongoose, { Schema, Document } from 'mongoose';
  * Source can be: NATIONAL, STATE, INTERNAL, MANUAL_UPLOAD
  */
 export interface IDNCList extends Document {
+  userId?: string; // Optional: null for National/State, set for Tenant-specific
   phoneNumber: string; // E.164 format: +1XXXXXXXXXX
   source: 'NATIONAL' | 'STATE' | 'INTERNAL' | 'MANUAL_UPLOAD';
   state?: string; // For state-specific DNC lists
@@ -20,11 +21,14 @@ export interface IDNCList extends Document {
 
 const DNCListSchema: Schema = new Schema(
   {
+    userId: {
+      type: String,
+      index: true,
+    },
     phoneNumber: {
       type: String,
       required: true,
       index: true,
-      unique: true,
       validate: {
         validator: function (v: string) {
           // E.164 format validation: +1XXXXXXXXXX (US numbers)
@@ -70,7 +74,8 @@ const DNCListSchema: Schema = new Schema(
 );
 
 // Compound index for efficient querying
-DNCListSchema.index({ phoneNumber: 1, source: 1 });
+// Note: userId can be null for global lists
+DNCListSchema.index({ phoneNumber: 1, userId: 1, source: 1 }, { unique: true });
 DNCListSchema.index({ expiryDate: 1 }); // For finding expired records
 
 export const DNCList = mongoose.model<IDNCList>('DNCList', DNCListSchema);
@@ -80,6 +85,7 @@ export const DNCList = mongoose.model<IDNCList>('DNCList', DNCListSchema);
  * These are PERMANENT unless manually removed
  */
 export interface IInternalDNC extends Document {
+  userId: string;
   phoneNumber: string;
   reason: string; // Why they opted out
   requestDate: Date;
@@ -94,11 +100,15 @@ export interface IInternalDNC extends Document {
 
 const InternalDNCSchema: Schema = new Schema(
   {
+    userId: {
+      type: String,
+      required: true,
+      index: true,
+    },
     phoneNumber: {
       type: String,
       required: true,
       index: true,
-      unique: true,
       validate: {
         validator: function (v: string) {
           return /^\+1\d{10}$/.test(v);
@@ -136,12 +146,16 @@ const InternalDNCSchema: Schema = new Schema(
   }
 );
 
+// Compound unique index: Per user, phone numbers must be unique
+InternalDNCSchema.index({ userId: 1, phoneNumber: 1 }, { unique: true });
+
 export const InternalDNC = mongoose.model<IInternalDNC>('InternalDNC', InternalDNCSchema);
 
 /**
  * DNC Upload History - Track CSV file uploads
  */
 export interface IDNCUpload extends Document {
+  userId: string;
   filename: string;
   uploadDate: Date;
   uploadedBy?: string;
@@ -162,6 +176,11 @@ export interface IDNCUpload extends Document {
 
 const DNCUploadSchema: Schema = new Schema(
   {
+    userId: {
+      type: String,
+      required: true,
+      index: true,
+    },
     filename: {
       type: String,
       required: true,

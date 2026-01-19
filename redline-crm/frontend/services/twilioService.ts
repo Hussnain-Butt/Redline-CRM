@@ -319,28 +319,16 @@ export async function terminateTwilioCall(callSid: string): Promise<void> {
 
 // ==================== VOICE SDK (Browser-Based Calling) ====================
 
-const TWILIO_SERVER_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000/api';
+import apiClient from './apiClient';
 
 /**
  * Fetch access token from backend server for Voice SDK
  */
 export async function getTwilioAccessToken(identity?: string): Promise<{ token: string; identity: string }> {
     try {
-        const url = new URL(`${TWILIO_SERVER_URL}/calls/token`);
-        if (identity) {
-            url.searchParams.set('identity', identity);
-        }
-
-        const response = await fetch(url.toString());
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to get access token');
-        }
-
-        const data = await response.json();
+        const { data } = await apiClient.get('/calls/token', { params: { identity } });
         return data.data;
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error getting access token:', error);
         throw error;
     }
@@ -351,12 +339,7 @@ export async function getTwilioAccessToken(identity?: string): Promise<{ token: 
  */
 export async function isVoiceServerAvailable(): Promise<boolean> {
     try {
-        const response = await fetch(`${TWILIO_SERVER_URL}/health`);
-        if (!response.ok) return false;
-
-        if (!response.ok) return false;
-
-        const data = await response.json();
+        const { data } = await apiClient.get('/health');
         return data.status === 'ok';
     } catch {
         return false;

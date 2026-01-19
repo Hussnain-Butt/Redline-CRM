@@ -8,6 +8,7 @@ export type CallStatus = 'queued' | 'ringing' | 'in-progress' | 'completed' | 'f
 // ==================== INTERFACES ====================
 
 export interface ICall {
+  userId: string;  // Clerk user ID for multi-tenancy
   contactId?: Types.ObjectId;
   direction: CallDirection;
   status: CallStatus;
@@ -35,6 +36,7 @@ export interface ICallDocument extends ICall, Document {}
 
 const callSchema = new Schema<ICallDocument>(
   {
+    userId: { type: String, required: true, index: true },  // Clerk user ID
     contactId: {
       type: String, // Changed from ObjectId to support frontend-generated String IDs
       required: false,

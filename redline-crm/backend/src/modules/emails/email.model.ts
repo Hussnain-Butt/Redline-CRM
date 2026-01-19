@@ -8,6 +8,7 @@ export type EmailDirection = 'inbound' | 'outbound';
 // ==================== INTERFACE ====================
 
 export interface IEmail {
+  userId: string;
   contactId?: Types.ObjectId;
   to: string[];
   cc: string[];
@@ -33,6 +34,11 @@ export interface IEmailDocument extends IEmail, Document {}
 
 const emailSchema = new Schema<IEmailDocument>(
   {
+    userId: {
+      type: String,
+      required: true,
+      index: true,
+    },
     contactId: {
       type: Schema.Types.ObjectId,
       ref: 'Contact',
@@ -96,13 +102,13 @@ const emailSchema = new Schema<IEmailDocument>(
 // ==================== INDEXES ====================
 
 // Index for getting emails by contact
-emailSchema.index({ contactId: 1, createdAt: -1 });
+emailSchema.index({ userId: 1, contactId: 1, createdAt: -1 });
 
 // Index for finding scheduled emails
-emailSchema.index({ status: 1, scheduledAt: 1 });
+emailSchema.index({ userId: 1, status: 1, scheduledAt: 1 });
 
 // Index for finding by messageId (webhooks)
-emailSchema.index({ messageId: 1 });
+emailSchema.index({ userId: 1, messageId: 1 });
 
 // ==================== MODEL ====================
 

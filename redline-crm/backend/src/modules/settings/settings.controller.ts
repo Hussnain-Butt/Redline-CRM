@@ -10,8 +10,8 @@ import { EmailSettingsInput } from './settings.validation.js';
  * Get email settings
  * GET /api/settings/email
  */
-export const getEmailSettings = asyncHandler(async (_req: Request, res: Response) => {
-  const settings = await settingsService.getEmailSettings();
+export const getEmailSettings = asyncHandler(async (req: Request, res: Response) => {
+  const settings = await settingsService.getEmailSettings(req.userId!);
   sendSuccess(res, settings);
 });
 
@@ -21,7 +21,7 @@ export const getEmailSettings = asyncHandler(async (_req: Request, res: Response
  */
 export const updateEmailSettings = asyncHandler(async (req: Request, res: Response) => {
   const data = req.body as EmailSettingsInput;
-  const settings = await settingsService.updateEmailSettings(data);
+  const settings = await settingsService.updateEmailSettings(req.userId!, data);
   
   // Mask password in response
   const response = {

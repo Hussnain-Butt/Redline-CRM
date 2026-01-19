@@ -21,7 +21,7 @@ export class CallService {
   /**
    * Create a call log
    */
-  async create(data: CreateCallInput): Promise<ICallDocument> {
+  async create(data: CreateCallInput & { userId: string }): Promise<ICallDocument> {
     const call = new Call({
       ...data,
       contactId: data.contactId,
@@ -32,8 +32,8 @@ export class CallService {
   /**
    * Update a call log
    */
-  async update(id: string, data: UpdateCallInput): Promise<ICallDocument> {
-    const call = await Call.findByIdAndUpdate(id, data, {
+  async update(id: string, userId: string, data: UpdateCallInput): Promise<ICallDocument> {
+    const call = await Call.findOneAndUpdate({ _id: id, userId }, data, {
       new: true,
       runValidators: true,
     });
@@ -47,7 +47,7 @@ export class CallService {
   /**
    * Get call logs with filtering
    */
-  async getAll(query: CallQueryInput): Promise<{
+  async getAll(userId: string, query: CallQueryInput): Promise<{
     calls: ICallDocument[];
     total: number;
     page: number;
@@ -56,7 +56,7 @@ export class CallService {
   }> {
     const { page, limit, contactId, direction, status, sortBy, sortOrder } = query;
 
-    const filter: FilterQuery<ICall> = {};
+    const filter: FilterQuery<ICall> = { userId };
     if (contactId) filter.contactId = new Types.ObjectId(contactId);
     if (direction) filter.direction = direction;
     if (status) filter.status = status;
@@ -83,12 +83,16 @@ export class CallService {
   /**
    * Get single call log
    */
-  async getById(id: string): Promise<ICallDocument> {
-    const call = await Call.findById(id);
+  async getById(id: string, userId: string): Promise<ICallDocument> {
+    const call = await Call.findOne({ _id: id, userId });
     if (!call) {
       throw new AppError('Call not found', 404);
     }
     return call;
+  }
+
+  async count(userId: string): Promise<number> {
+    return await Call.countDocuments({ userId });
   }
 
   /**

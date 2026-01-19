@@ -1,6 +1,7 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
 export interface ILead {
+  userId: string;  // Clerk user ID for multi-tenancy
   name: string;
   phone?: string;
   email?: string;
@@ -27,6 +28,7 @@ export interface ILeadDocument extends ILead, Document {}
 
 const leadSchema = new Schema<ILeadDocument>(
   {
+    userId: { type: String, required: true, index: true },  // Clerk user ID
     name: { type: String, required: true, trim: true },
     phone: { type: String, trim: true },
     email: { type: String, trim: true },

@@ -13,7 +13,7 @@ export class ReminderService {
   /**
    * Create a new reminder
    */
-  async create(data: CreateReminderInput): Promise<IReminderDocument> {
+  async create(data: CreateReminderInput & { userId: string }): Promise<IReminderDocument> {
     const reminder = new Reminder({
       ...data,
       contactId: data.contactId ? new Types.ObjectId(data.contactId) : undefined,
@@ -24,7 +24,7 @@ export class ReminderService {
   /**
    * Get all reminders with filtering, sorting, and pagination
    */
-  async getAll(query: ReminderQueryInput): Promise<{
+  async getAll(userId: string, query: ReminderQueryInput): Promise<{
     reminders: IReminderDocument[];
     total: number;
     page: number;
@@ -34,7 +34,7 @@ export class ReminderService {
     const { page, limit, status, type, priority, contactId, sortBy, sortOrder } = query;
 
     // Build filter
-    const filter: FilterQuery<IReminder> = {};
+    const filter: FilterQuery<IReminder> = { userId };
     if (status) filter.status = status;
     if (type) filter.type = type;
     if (priority) filter.priority = priority;
@@ -64,8 +64,8 @@ export class ReminderService {
   /**
    * Get a single reminder by ID
    */
-  async getById(id: string): Promise<IReminderDocument> {
-    const reminder = await Reminder.findById(id);
+  async getById(id: string, userId: string): Promise<IReminderDocument> {
+    const reminder = await Reminder.findOne({ _id: id, userId });
     if (!reminder) {
       throw new AppError('Reminder not found', 404);
     }
@@ -75,13 +75,13 @@ export class ReminderService {
   /**
    * Update a reminder
    */
-  async update(id: string, data: UpdateReminderInput): Promise<IReminderDocument> {
+  async update(id: string, userId: string, data: UpdateReminderInput): Promise<IReminderDocument> {
     const updateData: any = { ...data };
     if (data.contactId) {
       updateData.contactId = new Types.ObjectId(data.contactId);
     }
 
-    const reminder = await Reminder.findByIdAndUpdate(id, updateData, {
+    const reminder = await Reminder.findOneAndUpdate({ _id: id, userId }, updateData, {
       new: true,
       runValidators: true,
     });
@@ -95,8 +95,8 @@ export class ReminderService {
   /**
    * Delete a reminder
    */
-  async delete(id: string): Promise<void> {
-    const reminder = await Reminder.findByIdAndDelete(id);
+  async delete(id: string, userId: string): Promise<void> {
+    const reminder = await Reminder.findOneAndDelete({ _id: id, userId });
     if (!reminder) {
       throw new AppError('Reminder not found', 404);
     }
@@ -105,9 +105,9 @@ export class ReminderService {
   /**
    * Update reminder status only
    */
-  async updateStatus(id: string, status: string): Promise<IReminderDocument> {
-    const reminder = await Reminder.findByIdAndUpdate(
-      id,
+  async updateStatus(id: string, userId: string, status: string): Promise<IReminderDocument> {
+    const reminder = await Reminder.findOneAndUpdate(
+      { _id: id, userId },
       { status },
       { new: true, runValidators: true }
     );
@@ -121,7 +121,7 @@ export class ReminderService {
   /**
    * Get today's reminders
    */
-  async getToday(): Promise<IReminderDocument[]> {
+  async getToday(userId: string): Promise<IReminderDocument[]> {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
@@ -129,6 +129,7 @@ export class ReminderService {
     endOfDay.setHours(23, 59, 59, 999);
 
     return await Reminder.find({
+      userId,
       dueDate: { $gte: startOfDay, $lte: endOfDay },
       status: { $ne: 'completed' },
     }).sort({ dueTime: 1, priority: -1 });
@@ -137,11 +138,12 @@ export class ReminderService {
   /**
    * Get overdue reminders
    */
-  async getOverdue(): Promise<IReminderDocument[]> {
+  async getOverdue(userId: string): Promise<IReminderDocument[]> {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
     return await Reminder.find({
+      userId,
       dueDate: { $lt: now },
       status: { $ne: 'completed' },
     }).sort({ dueDate: 1, priority: -1 });
@@ -150,7 +152,7 @@ export class ReminderService {
   /**
    * Get upcoming reminders (next 7 days)
    */
-  async getUpcoming(): Promise<IReminderDocument[]> {
+  async getUpcoming(userId: string): Promise<IReminderDocument[]> {
     const startOfTomorrow = new Date();
     startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
     startOfTomorrow.setHours(0, 0, 0, 0);
@@ -160,6 +162,7 @@ export class ReminderService {
     endOfWeek.setHours(23, 59, 59, 999);
 
     return await Reminder.find({
+      userId,
       dueDate: { $gte: startOfTomorrow, $lte: endOfWeek },
       status: { $ne: 'completed' },
     }).sort({ dueDate: 1, priority: -1 });
@@ -168,7 +171,7 @@ export class ReminderService {
   /**
    * Get reminder counts by status
    */
-  async getCounts(): Promise<{
+  async getCounts(userId: string): Promise<{
     pending: number;
     completed: number;
     overdue: number;
@@ -184,10 +187,11 @@ export class ReminderService {
     endOfDay.setHours(23, 59, 59, 999);
 
     const [pending, completed, overdue, today] = await Promise.all([
-      Reminder.countDocuments({ status: 'pending' }),
-      Reminder.countDocuments({ status: 'completed' }),
-      Reminder.countDocuments({ dueDate: { $lt: now }, status: { $ne: 'completed' } }),
+      Reminder.countDocuments({ userId, status: 'pending' }),
+      Reminder.countDocuments({ userId, status: 'completed' }),
+      Reminder.countDocuments({ userId, dueDate: { $lt: now }, status: { $ne: 'completed' } }),
       Reminder.countDocuments({
+        userId,
         dueDate: { $gte: startOfDay, $lte: endOfDay },
         status: { $ne: 'completed' },
       }),

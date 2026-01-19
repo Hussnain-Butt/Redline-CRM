@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000';
+import apiClient from './apiClient';
 
 export interface EmailSettings {
   SMTP_HOST: string;
@@ -17,11 +17,7 @@ export interface TestConnectionResult {
  * Get current email settings
  */
 export const getEmailSettings = async (): Promise<EmailSettings> => {
-  const response = await fetch(`${API_URL}/settings/email`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch email settings');
-  }
-  const data = await response.json();
+  const { data } = await apiClient.get('/settings/email');
   return data.data;
 };
 
@@ -29,20 +25,7 @@ export const getEmailSettings = async (): Promise<EmailSettings> => {
  * Update email settings
  */
 export const updateEmailSettings = async (settings: EmailSettings): Promise<EmailSettings> => {
-  const response = await fetch(`${API_URL}/settings/email`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(settings),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to update email settings');
-  }
-
-  const data = await response.json();
+  const { data } = await apiClient.put('/settings/email', settings);
   return data.data;
 };
 
@@ -50,22 +33,13 @@ export const updateEmailSettings = async (settings: EmailSettings): Promise<Emai
  * Test email connection with provided credentials
  */
 export const testEmailConnection = async (settings: EmailSettings): Promise<TestConnectionResult> => {
-  const response = await fetch(`${API_URL}/settings/email/test`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(settings),
-  });
-
-  const data = await response.json();
-  
-  if (!response.ok) {
+  try {
+    const { data } = await apiClient.post('/settings/email/test', settings);
+    return data.data;
+  } catch (error: any) {
     return {
       success: false,
-      message: data.message || 'Connection test failed',
+      message: error.response?.data?.message || error.message || 'Connection test failed',
     };
   }
-
-  return data.data;
 };

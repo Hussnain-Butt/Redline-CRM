@@ -30,8 +30,8 @@ export interface LeadFilters {
 }
 
 export const leadService = {
-  async getAll(filters: LeadFilters = {}): Promise<ILeadDocument[]> {
-    const query: any = {};
+  async getAll(userId: string, filters: LeadFilters = {}): Promise<ILeadDocument[]> {
+    const query: any = { userId };
     
     if (filters.status) query.status = filters.status;
     if (filters.source) query.source = filters.source;
@@ -44,68 +44,70 @@ export const leadService = {
     return Lead.find(query).sort({ createdAt: -1 });
   },
 
-  async getById(id: string): Promise<ILeadDocument | null> {
-    return Lead.findById(id);
+  async getById(id: string, userId: string): Promise<ILeadDocument | null> {
+    return Lead.findOne({ _id: id, userId });
   },
 
-  async create(data: CreateLeadDto): Promise<ILeadDocument> {
+  async create(data: CreateLeadDto & { userId: string }): Promise<ILeadDocument> {
     const lead = new Lead(data);
     return lead.save();
   },
 
-  async bulkCreate(leads: CreateLeadDto[]): Promise<{ inserted: number; duplicates: number }> {
+  async bulkCreate(leads: CreateLeadDto[], userId: string): Promise<{ inserted: number; duplicates: number }> {
     let inserted = 0;
     let duplicates = 0;
 
     for (const leadData of leads) {
-      // Check for duplicate by phone (if exists)
+      // Check for duplicate by phone (if exists) within user's leads
       if (leadData.phone) {
-        const existing = await Lead.findOne({ phone: leadData.phone });
+        const existing = await Lead.findOne({ phone: leadData.phone, userId });
         if (existing) {
           duplicates++;
           continue;
         }
       }
       
-      await Lead.create(leadData);
+      await Lead.create({ ...leadData, userId });
       inserted++;
     }
 
     return { inserted, duplicates };
   },
 
-  async update(id: string, data: Partial<CreateLeadDto>): Promise<ILeadDocument | null> {
-    return Lead.findByIdAndUpdate(id, data, { new: true });
+  async update(id: string, userId: string, data: Partial<CreateLeadDto>): Promise<ILeadDocument | null> {
+    return Lead.findOneAndUpdate({ _id: id, userId }, data, { new: true });
   },
 
-  async updateStatus(id: string, status: ILead['status']): Promise<ILeadDocument | null> {
-    return Lead.findByIdAndUpdate(id, { status }, { new: true });
+  async updateStatus(id: string, userId: string, status: ILead['status']): Promise<ILeadDocument | null> {
+    return Lead.findOneAndUpdate({ _id: id, userId }, { status }, { new: true });
   },
 
-  async delete(id: string): Promise<boolean> {
-    const result = await Lead.findByIdAndDelete(id);
+  async delete(id: string, userId: string): Promise<boolean> {
+    const result = await Lead.findOneAndDelete({ _id: id, userId });
     return !!result;
   },
 
-  async deleteByRunId(runId: string): Promise<number> {
-    const result = await Lead.deleteMany({ apifyRunId: runId });
+  async deleteByRunId(runId: string, userId: string): Promise<number> {
+    const result = await Lead.deleteMany({ apifyRunId: runId, userId });
     return result.deletedCount;
   },
 
-  async getStats(): Promise<{
+  async getStats(userId: string): Promise<{
     total: number;
     byStatus: Record<string, number>;
     bySource: Record<string, number>;
   }> {
-    const total = await Lead.countDocuments();
+    const total = await Lead.countDocuments({ userId });
     
     const statusAgg = await Lead.aggregate([
+      { $match: { userId } },
       { $group: { _id: '$status', count: { $sum: 1 } } }
     ]);
     const byStatus: Record<string, number> = {};
     statusAgg.forEach(s => { byStatus[s._id] = s.count; });
 
     const sourceAgg = await Lead.aggregate([
+      { $match: { userId } },
       { $group: { _id: '$source', count: { $sum: 1 } } }
     ]);
     const bySource: Record<string, number> = {};
@@ -114,8 +116,8 @@ export const leadService = {
     return { total, byStatus, bySource };
   },
 
-  async convertToContact(leadId: string): Promise<ILeadDocument | null> {
-    const lead = await Lead.findById(leadId);
+  async convertToContact(leadId: string, userId: string): Promise<ILeadDocument | null> {
+    const lead = await Lead.findOne({ _id: leadId, userId });
     if (!lead) return null;
 
     // Mark as converted

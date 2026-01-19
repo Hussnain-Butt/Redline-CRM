@@ -13,7 +13,7 @@ export const leadController = {
         search: req.query.search as string,
       };
 
-      const leads = await leadService.getAll(filters);
+      const leads = await leadService.getAll(req.userId!, filters);
       return res.json({ success: true, data: leads });
     } catch (error: any) {
       return res.status(500).json({ success: false, error: error.message });
@@ -22,7 +22,7 @@ export const leadController = {
 
   async getById(req: Request, res: Response) {
     try {
-      const lead = await leadService.getById(req.params.id);
+      const lead = await leadService.getById(req.params.id, req.userId!);
       if (!lead) {
         return res.status(404).json({ success: false, error: 'Lead not found' });
       }
@@ -34,7 +34,10 @@ export const leadController = {
 
   async create(req: Request, res: Response) {
     try {
-      const lead = await leadService.create(req.body);
+      const lead = await leadService.create({
+        ...req.body,
+        userId: req.userId!
+      });
       return res.status(201).json({ success: true, data: lead });
     } catch (error: any) {
       return res.status(500).json({ success: false, error: error.message });
@@ -48,7 +51,7 @@ export const leadController = {
         return res.status(400).json({ success: false, error: 'leads must be an array' });
       }
 
-      const result = await leadService.bulkCreate(leads);
+      const result = await leadService.bulkCreate(leads, req.userId!);
       return res.status(201).json({ success: true, data: result });
     } catch (error: any) {
       return res.status(500).json({ success: false, error: error.message });
@@ -57,7 +60,7 @@ export const leadController = {
 
   async update(req: Request, res: Response) {
     try {
-      const lead = await leadService.update(req.params.id, req.body);
+      const lead = await leadService.update(req.params.id, req.userId!, req.body);
       if (!lead) {
         return res.status(404).json({ success: false, error: 'Lead not found' });
       }
@@ -70,7 +73,7 @@ export const leadController = {
   async updateStatus(req: Request, res: Response) {
     try {
       const { status } = req.body;
-      const lead = await leadService.updateStatus(req.params.id, status);
+      const lead = await leadService.updateStatus(req.params.id, req.userId!, status);
       if (!lead) {
         return res.status(404).json({ success: false, error: 'Lead not found' });
       }
@@ -82,7 +85,7 @@ export const leadController = {
 
   async delete(req: Request, res: Response) {
     try {
-      const success = await leadService.delete(req.params.id);
+      const success = await leadService.delete(req.params.id, req.userId!);
       if (!success) {
         return res.status(404).json({ success: false, error: 'Lead not found' });
       }
@@ -92,9 +95,9 @@ export const leadController = {
     }
   },
 
-  async getStats(_req: Request, res: Response) {
+  async getStats(req: Request, res: Response) {
     try {
-      const stats = await leadService.getStats();
+      const stats = await leadService.getStats(req.userId!);
       return res.json({ success: true, data: stats });
     } catch (error: any) {
       return res.status(500).json({ success: false, error: error.message });
@@ -103,13 +106,14 @@ export const leadController = {
 
   async convertToContact(req: Request, res: Response) {
     try {
-      const lead = await leadService.getById(req.params.id);
+      const lead = await leadService.getById(req.params.id, req.userId!);
       if (!lead) {
         return res.status(404).json({ success: false, error: 'Lead not found' });
       }
 
       // Create contact from lead
       const contact = await contactService.create({
+        userId: req.userId!,
         name: lead.name,
         phone: lead.phone || '',
         email: lead.email || '',
@@ -122,7 +126,7 @@ export const leadController = {
       });
 
       // Mark lead as converted
-      await leadService.updateStatus(req.params.id, 'converted');
+      await leadService.updateStatus(req.params.id, req.userId!, 'converted');
 
       return res.json({ success: true, data: { lead, contact } });
     } catch (error: any) {
