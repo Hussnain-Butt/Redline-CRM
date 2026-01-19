@@ -1,31 +1,29 @@
 /**
  * Twilio Service
- * Handles integration with Twilio API for phone numbers, SMS, and calls
+ * Handles integration with Twilio via Backend API (secure, centralized)
  */
 
-const TWILIO_ACCOUNT_SID = import.meta.env.VITE_TWILIO_ACCOUNT_SID;
-const TWILIO_AUTH_TOKEN = import.meta.env.VITE_TWILIO_AUTH_TOKEN;
+import apiClient from './apiClient';
 
-// Base64 encode credentials for Basic Auth
-const getAuthHeader = () => {
-    const credentials = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
-    return `Basic ${credentials}`;
-};
+// ==================== CONFIGURATION ====================
 
-// Check if Twilio is configured
-export function isTwilioConfigured(): boolean {
-    return Boolean(
-        TWILIO_ACCOUNT_SID &&
-        TWILIO_AUTH_TOKEN &&
-        TWILIO_ACCOUNT_SID !== 'your_account_sid_here'
-    );
+/**
+ * Check if Twilio is configured (via backend)
+ */
+export async function isTwilioConfigured(): Promise<boolean> {
+    try {
+        const { data } = await apiClient.get('/phone-numbers');
+        return data.success && data.data?.length > 0;
+    } catch {
+        return false;
+    }
 }
 
 // Get credentials status
 export function getTwilioStatus(): { configured: boolean; accountSid: string | null } {
     return {
-        configured: isTwilioConfigured(),
-        accountSid: TWILIO_ACCOUNT_SID ? TWILIO_ACCOUNT_SID.substring(0, 8) + '***' : null
+        configured: true, // Always true since backend handles it
+        accountSid: 'Backend Managed'
     };
 }
 
@@ -44,46 +42,19 @@ export interface TwilioPhoneNumber {
 }
 
 /**
- * Fetch all phone numbers from Twilio account
+ * Fetch all phone numbers from backend
+ * Returns the single shared number configured in backend
  */
 export async function fetchTwilioPhoneNumbers(): Promise<TwilioPhoneNumber[]> {
-    if (!isTwilioConfigured()) {
-        throw new Error('Twilio is not configured. Please add your credentials to .env.local');
-    }
-
     try {
-        const response = await fetch(
-            `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/IncomingPhoneNumbers.json`,
-            {
-                headers: {
-                    'Authorization': getAuthHeader(),
-                },
-            }
-        );
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to fetch phone numbers');
+        const { data } = await apiClient.get('/phone-numbers');
+        if (data.success && data.data) {
+            return data.data;
         }
-
-        const data = await response.json();
-
-        return data.incoming_phone_numbers.map((num: any) => ({
-            sid: num.sid,
-            phoneNumber: num.phone_number,
-            friendlyName: num.friendly_name,
-            capabilities: {
-                voice: num.capabilities?.voice || false,
-                sms: num.capabilities?.sms || false,
-                mms: num.capabilities?.mms || false,
-            },
-            countryCode: num.phone_number.startsWith('+1') ? 'US' :
-                num.phone_number.startsWith('+44') ? 'GB' :
-                    num.phone_number.startsWith('+61') ? 'AU' : 'XX',
-        }));
+        return [];
     } catch (error) {
-        console.error('Error fetching Twilio numbers:', error);
-        throw error;
+        console.error('Error fetching phone numbers:', error);
+        return [];
     }
 }
 
@@ -100,102 +71,73 @@ export interface TwilioSMSMessage {
 }
 
 /**
- * Send an SMS message via Twilio
+ * Send an SMS message via Backend API
  */
 export async function sendTwilioSMS(
     from: string,
     to: string,
     body: string
 ): Promise<TwilioSMSMessage> {
-    if (!isTwilioConfigured()) {
-        throw new Error('Twilio is not configured');
-    }
-
-    const formData = new URLSearchParams();
-    formData.append('From', from);
-    formData.append('To', to);
-    formData.append('Body', body);
-
     try {
-        const response = await fetch(
-            `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
-            {
-                method: 'POST',
-                headers: {
-                    'Authorization': getAuthHeader(),
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: formData,
-            }
-        );
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to send SMS');
+        const { data } = await apiClient.post('/sms/send', { from, to, body });
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to send SMS');
         }
 
-        const data = await response.json();
-
+        // Map backend response to TwilioSMSMessage
+        const sms = data.data;
         return {
-            sid: data.sid,
-            from: data.from,
-            to: data.to,
-            body: data.body,
-            status: data.status,
-            dateSent: data.date_sent,
-            direction: data.direction,
+            sid: sms.twilioSid || sms._id,
+            from: sms.fromNumber,
+            to: sms.toNumber,
+            body: sms.body,
+            status: sms.status,
+            dateSent: sms.timestamp,
+            direction: sms.direction
         };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error sending SMS:', error);
         throw error;
     }
 }
 
+
 /**
- * Fetch SMS message history
+ * Fetch SMS message history from backend
  */
 export async function fetchTwilioMessages(
-    phoneNumber?: string,
+    contactId?: string,
     limit: number = 50
 ): Promise<TwilioSMSMessage[]> {
-    if (!isTwilioConfigured()) {
-        throw new Error('Twilio is not configured');
-    }
-
-    let url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json?PageSize=${limit}`;
-
-    if (phoneNumber) {
-        url += `&To=${encodeURIComponent(phoneNumber)}`;
-    }
-
     try {
-        const response = await fetch(url, {
-            headers: {
-                'Authorization': getAuthHeader(),
-            },
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to fetch messages');
+        let endpoint = '/sms';
+        if (contactId) {
+            endpoint = `/sms/contact/${contactId}`;
+        }
+        
+        const { data } = await apiClient.get(endpoint);
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to fetch messages');
         }
 
-        const data = await response.json();
-
-        return data.messages.map((msg: any) => ({
-            sid: msg.sid,
-            from: msg.from,
-            to: msg.to,
+        // Map backend response to TwilioSMSMessage format
+        return (data.data || []).map((msg: any) => ({
+            sid: msg.twilioSid || msg._id,
+            from: msg.fromNumber,
+            to: msg.toNumber,
             body: msg.body,
             status: msg.status,
-            dateSent: msg.date_sent,
-            direction: msg.direction,
+            dateSent: msg.timestamp,
+            direction: msg.direction
         }));
     } catch (error) {
         console.error('Error fetching messages:', error);
-        throw error;
+        return [];
     }
 }
+
 
 // ==================== CALLS ====================
 
@@ -210,119 +152,11 @@ export interface TwilioCall {
     endTime: string;
 }
 
-/**
- * Initiate an outbound call via Twilio REST API (server-to-server)
- * Note: This connects two phones, not the browser
- * For browser-based calling, use the Voice SDK functions below
- */
-export async function initiateTwilioCall(
-    from: string,
-    to: string,
-    callbackUrl?: string
-): Promise<TwilioCall> {
-    if (!isTwilioConfigured()) {
-        throw new Error('Twilio is not configured');
-    }
-
-    const formData = new URLSearchParams();
-    formData.append('From', from);
-    formData.append('To', to);
-
-    // TwiML for connecting the call
-    const twiml = `<Response><Dial callerId="${from}">${to}</Dial></Response>`;
-    formData.append('Twiml', twiml);
-
-    if (callbackUrl) {
-        formData.append('StatusCallback', callbackUrl);
-        formData.append('StatusCallbackEvent', 'initiated ringing answered completed');
-    }
-
-    try {
-        const response = await fetch(
-            `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls.json`,
-            {
-                method: 'POST',
-                headers: {
-                    'Authorization': getAuthHeader(),
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: formData,
-            }
-        );
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to initiate call');
-        }
-
-        const data = await response.json();
-
-        return {
-            sid: data.sid,
-            from: data.from,
-            to: data.to,
-            status: data.status,
-            duration: parseInt(data.duration) || 0,
-            direction: data.direction,
-            startTime: data.start_time,
-            endTime: data.end_time,
-        };
-    } catch (error) {
-        console.error('Error initiating call:', error);
-        throw error;
-    }
-}
-
-/**
- * Terminate an active call via Twilio REST API
- * Updates the call status to 'completed' which ends the call
- */
-export async function terminateTwilioCall(callSid: string): Promise<void> {
-    if (!isTwilioConfigured()) {
-        throw new Error('Twilio is not configured');
-    }
-
-    if (!callSid) {
-        console.warn('No call SID provided to terminate');
-        return;
-    }
-
-    const formData = new URLSearchParams();
-    formData.append('Status', 'completed');
-
-    try {
-        console.log(`Terminating call: ${callSid}`);
-        const response = await fetch(
-            `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}.json`,
-            {
-                method: 'POST',
-                headers: {
-                    'Authorization': getAuthHeader(),
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: formData,
-            }
-        );
-
-        if (!response.ok) {
-            const error = await response.json();
-            console.error('Failed to terminate call:', error);
-            // Don't throw - call might already be completed
-        } else {
-            console.log('Call terminated successfully');
-        }
-    } catch (error) {
-        console.error('Error terminating call:', error);
-        // Don't throw - we still want to clean up UI state
-    }
-}
-
 // ==================== VOICE SDK (Browser-Based Calling) ====================
-
-import apiClient from './apiClient';
 
 /**
  * Fetch access token from backend server for Voice SDK
+ * This is used by the browser-based calling via Twilio Voice SDK
  */
 export async function getTwilioAccessToken(identity?: string): Promise<{ token: string; identity: string }> {
     try {
@@ -346,90 +180,30 @@ export async function isVoiceServerAvailable(): Promise<boolean> {
     }
 }
 
-
 /**
- * Fetch call history
+ * Fetch call history from backend
  */
 export async function fetchTwilioCalls(limit: number = 50): Promise<TwilioCall[]> {
-    if (!isTwilioConfigured()) {
-        throw new Error('Twilio is not configured');
-    }
-
     try {
-        const response = await fetch(
-            `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls.json?PageSize=${limit}`,
-            {
-                headers: {
-                    'Authorization': getAuthHeader(),
-                },
-            }
-        );
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to fetch calls');
+        const { data } = await apiClient.get('/calls', { params: { limit } });
+        
+        if (!data.success) {
+            return [];
         }
 
-        const data = await response.json();
-
-        return data.calls.map((call: any) => ({
-            sid: call.sid,
+        // Map backend call records to TwilioCall format
+        return (data.data?.calls || []).map((call: any) => ({
+            sid: call.sid || call._id,
             from: call.from,
             to: call.to,
             status: call.status,
-            duration: parseInt(call.duration) || 0,
+            duration: call.duration || 0,
             direction: call.direction,
-            startTime: call.start_time,
-            endTime: call.end_time,
+            startTime: call.startTime,
+            endTime: call.endTime
         }));
     } catch (error) {
         console.error('Error fetching calls:', error);
-        throw error;
-    }
-}
-
-// ==================== ACCOUNT INFO ====================
-
-export interface TwilioAccountInfo {
-    sid: string;
-    friendlyName: string;
-    status: string;
-    type: string;
-}
-
-/**
- * Get Twilio account information
- */
-export async function getTwilioAccountInfo(): Promise<TwilioAccountInfo> {
-    if (!isTwilioConfigured()) {
-        throw new Error('Twilio is not configured');
-    }
-
-    try {
-        const response = await fetch(
-            `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}.json`,
-            {
-                headers: {
-                    'Authorization': getAuthHeader(),
-                },
-            }
-        );
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to fetch account info');
-        }
-
-        const data = await response.json();
-
-        return {
-            sid: data.sid,
-            friendlyName: data.friendly_name,
-            status: data.status,
-            type: data.type,
-        };
-    } catch (error) {
-        console.error('Error fetching account info:', error);
-        throw error;
+        return [];
     }
 }
