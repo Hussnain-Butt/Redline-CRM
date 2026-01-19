@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { useAuth, useUser } from '@clerk/clerk-react';
+import { useAuth, useUser, AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
 import {
     LayoutDashboard,
     Phone,
@@ -702,6 +702,7 @@ export default function App() {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/sign-in/*" element={<SignInPage />} />
                 <Route path="/sign-up/*" element={<SignUpPage />} />
+                <Route path="/sso-callback" element={<AuthenticateWithRedirectCallback />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         );
