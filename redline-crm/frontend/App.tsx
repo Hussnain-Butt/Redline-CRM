@@ -38,6 +38,8 @@ import AIAssistant from './components/AIAssistant';
 import LockScreen from './components/LockScreen';
 import DNCManager from './components/DNCManager';
 import LeadsManager from './components/LeadsManager';
+import { CallProvider } from './contexts/CallContext';
+import PersistentCallOverlay from './components/PersistentCallOverlay';
 import { ViewState, Contact, CallLog, Message, PhoneNumber, SMSMessage, ContactNote, getCountryByCode } from './types';
 import { summarizeTranscript, generateEmailDraft } from './services/geminiService';
 import {
@@ -704,6 +706,7 @@ export default function App() {
     }
 
     return (
+        <CallProvider>
         <div className="flex h-screen bg-neutral-50 overflow-hidden">
             {/* Sidebar */}
             <div className="w-80 bg-gradient-to-b from-neutral-900 to-neutral-950 text-white flex flex-col h-screen overflow-y-auto">
@@ -1034,6 +1037,9 @@ export default function App() {
                         <p className="text-sm text-neutral-300 leading-relaxed">{lastCallSummary.summary}</p>
                     </div>
                 )}
+
+                {/* Persistent Call Overlay - Shows on all pages during active call */}
+                <PersistentCallOverlay />
 
                 {/* Routes */}
                 <Routes>
@@ -1496,5 +1502,6 @@ export default function App() {
                 onErrorClear={() => setLockError('')}
             />
         </div>
+        </CallProvider>
     );
 }

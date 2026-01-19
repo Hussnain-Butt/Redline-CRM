@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Phone, Delete, Mic, MicOff, PhoneOff, User, MoreVertical, Archive, ChevronDown, AlertCircle, Loader2, Volume2, Search, Clock, PhoneIncoming, PhoneOutgoing, PhoneMissed } from 'lucide-react';
 import { CallLog, PhoneNumber, getCountryByCode, COUNTRIES } from '../types';
 import NumberSelector from './NumberSelector';
-import { getTwilioAccessToken, isVoiceServerAvailable, initiateTwilioCall, isTwilioConfigured, terminateTwilioCall } from '../services/twilioService';
+import { useCallContext } from '../contexts/CallContext';
 
 // DTMF frequency pairs for dial tones
 const DTMF_FREQUENCIES: { [key: string]: [number, number] } = {
@@ -22,25 +22,7 @@ interface DialerProps {
   callHistory?: CallLog[];
 }
 
-type CallStatus = 'idle' | 'initializing' | 'ready' | 'calling' | 'ringing' | 'connected' | 'disconnecting';
 type ViewMode = 'dialer' | 'history';
-
-// Dynamic import for Voice SDK
-let Device: any = null;
-let Call: any = null;
-
-// Try to load the Voice SDK dynamically
-const loadVoiceSDK = async () => {
-  try {
-    const sdk = await import('@twilio/voice-sdk');
-    Device = sdk.Device;
-    Call = sdk.Call;
-    return true;
-  } catch (e) {
-    console.warn('Twilio Voice SDK not available, using REST API fallback');
-    return false;
-  }
-};
 
 const Dialer: React.FC<DialerProps> = ({
   onCallEnd,
@@ -51,27 +33,36 @@ const Dialer: React.FC<DialerProps> = ({
   contactName,
   callHistory = []
 }) => {
+  // Use global CallContext for persistent call state
+  const {
+    callStatus,
+    duration,
+    isMuted,
+    isRecording,
+    deviceReady,
+    callError,
+    voiceSDKAvailable,
+    incomingCall,
+    makeCall,
+    hangupCall,
+    muteToggle,
+    acceptIncomingCall,
+    rejectIncomingCall,
+    sendDTMF,
+    clearError,
+  } = useCallContext();
+
+  // Local UI state (not call-related)
   const [number, setNumber] = useState(initialNumber);
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
-  const [callStatus, setCallStatus] = useState<CallStatus>('idle');
-  const [duration, setDuration] = useState(0);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [callError, setCallError] = useState<string | null>(null);
-  const [deviceReady, setDeviceReady] = useState(false);
-  const [voiceServerAvailable, setVoiceServerAvailable] = useState<boolean | null>(null);
-  const [voiceSDKAvailable, setVoiceSDKAvailable] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('dialer');
-  const [currentCallSid, setCurrentCallSid] = useState<string | null>(null);
-  const [incomingCall, setIncomingCall] = useState<any | null>(null);
 
+  // Audio context for DTMF tones
   const audioContextRef = useRef<AudioContext | null>(null);
-  const deviceRef = useRef<any>(null);
-  const activeCallRef = useRef<any>(null);
   const callStartTimeRef = useRef<Date | null>(null);
-  const durationIntervalRef = useRef<number | null>(null);
+  const ringtoneOscillatorsRef = useRef<any[]>([]);
 
   // Filter countries based on search
   const filteredCountries = COUNTRIES.filter(country =>
@@ -95,7 +86,7 @@ const Dialer: React.FC<DialerProps> = ({
 
     try {
       const ctx = getAudioContext();
-      const duration = 0.15;
+      const toneDuration = 0.15;
       const time = ctx.currentTime;
 
       frequencies.forEach(freq => {
@@ -106,104 +97,20 @@ const Dialer: React.FC<DialerProps> = ({
         oscillator.frequency.value = freq;
 
         gainNode.gain.setValueAtTime(0.2, time);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, time + duration);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, time + toneDuration);
 
         oscillator.connect(gainNode);
         gainNode.connect(ctx.destination);
 
         oscillator.start(time);
-        oscillator.stop(time + duration);
+        oscillator.stop(time + toneDuration);
       });
     } catch (e) {
       console.log('Audio not supported');
     }
   };
 
-  // Check if voice server is available and load SDK
-  useEffect(() => {
-    const init = async () => {
-      // Try to load Voice SDK
-      const sdkLoaded = await loadVoiceSDK();
-      setVoiceSDKAvailable(sdkLoaded);
-
-      if (sdkLoaded) {
-        const available = await isVoiceServerAvailable();
-        setVoiceServerAvailable(available);
-        if (available) {
-          initializeTwilioDevice();
-        } else {
-          // Fallback to ready state for REST API
-          setCallStatus('ready');
-          setDeviceReady(true);
-        }
-      } else {
-        // No SDK, use REST API
-        setCallStatus('ready');
-        setDeviceReady(true);
-        setVoiceServerAvailable(false);
-      }
-    };
-    init();
-  }, []);
-
-  // Initialize Twilio Device
-  const initializeTwilioDevice = useCallback(async () => {
-    if (!Device) return;
-
-    try {
-      setCallStatus('initializing');
-      setCallError(null);
-
-      console.log('Fetching Twilio access token...');
-      const { token, identity } = await getTwilioAccessToken();
-      console.log('Token received for identity:', identity);
-
-      const device = new Device(token, {
-        logLevel: 1,
-        codecPreferences: Call ? [Call.Codec.Opus, Call.Codec.PCMU] : undefined,
-      });
-
-      device.on('registered', () => {
-        console.log('Twilio Device registered and ready');
-        setDeviceReady(true);
-        setCallStatus('ready');
-      });
-
-      device.on('error', (error: any) => {
-        console.error('Twilio Device error:', error);
-        setCallError(`Device error: ${error.message}`);
-        setDeviceReady(false);
-      });
-
-      device.on('incoming', (call: any) => {
-        console.log('Incoming call from:', call.parameters.From);
-        setIncomingCall(call);
-        setCallStatus('ringing');
-        playRingtone();
-      });
-
-      device.on('tokenWillExpire', async () => {
-        console.log('Token will expire, refreshing...');
-        try {
-          const { token: newToken } = await getTwilioAccessToken();
-          device.updateToken(newToken);
-        } catch (error) {
-          console.error('Failed to refresh token:', error);
-        }
-      });
-
-      await device.register();
-      deviceRef.current = device;
-
-    } catch (error) {
-      console.error('Failed to initialize Twilio Device:', error);
-      setCallError(error instanceof Error ? error.message : 'Failed to initialize phone');
-      // Fallback to REST API
-      setCallStatus('ready');
-      setDeviceReady(true);
-    }
-  }, []);
-
+  // Handle initial number from props
   useEffect(() => {
     if (initialNumber) {
       const matchingCountry = COUNTRIES.find(c => initialNumber.startsWith(c.dialCode));
@@ -216,35 +123,33 @@ const Dialer: React.FC<DialerProps> = ({
     }
   }, [initialNumber]);
 
-  // Duration timer
+  // Report call end to parent when call ends
   useEffect(() => {
-    if (callStatus === 'connected' && !durationIntervalRef.current) {
-      durationIntervalRef.current = window.setInterval(() => {
-        setDuration(prev => prev + 1);
-      }, 1000);
-    } else if (callStatus !== 'connected' && durationIntervalRef.current) {
-      clearInterval(durationIntervalRef.current);
-      durationIntervalRef.current = null;
-    }
-    return () => {
-      if (durationIntervalRef.current) {
-        clearInterval(durationIntervalRef.current);
-        durationIntervalRef.current = null;
+    if (callStatus === 'idle' || callStatus === 'ready') {
+      if (callStartTimeRef.current) {
+        // Call just ended
+        const log: CallLog = {
+          id: Math.random().toString(36).substr(2, 9),
+          contactId: 'unknown',
+          date: callStartTimeRef.current,
+          durationSeconds: duration,
+          type: 'outbound',
+          fromNumber: selectedPhoneNumber?.number,
+          fromCountry: selectedPhoneNumber?.country,
+          toNumber: getFullNumber(),
+        };
+        onCallEnd(log);
+        callStartTimeRef.current = null;
       }
-    };
+    }
   }, [callStatus]);
 
-  // Cleanup on unmount
+  // Track call start
   useEffect(() => {
-    return () => {
-      if (deviceRef.current && typeof deviceRef.current.destroy === 'function') {
-        deviceRef.current.destroy();
-      }
-    };
-  }, []);
-
-  // Ringtone Ref
-  const ringtoneOscillatorsRef = useRef<any[]>([]);
+    if (callStatus === 'calling' && !callStartTimeRef.current) {
+      callStartTimeRef.current = new Date();
+    }
+  }, [callStatus]);
 
   const playRingtone = () => {
     try {
@@ -252,13 +157,9 @@ const Dialer: React.FC<DialerProps> = ({
         const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
         audioContextRef.current = new AudioContext();
       }
-      const notify = () => {
-          // Verify context is active
-          if (audioContextRef.current?.state === 'suspended') {
-              audioContextRef.current.resume();
-          }
+      if (audioContextRef.current?.state === 'suspended') {
+        audioContextRef.current.resume();
       }
-      notify();
 
       const ctx = audioContextRef.current;
       if (!ctx) return;
@@ -267,51 +168,47 @@ const Dialer: React.FC<DialerProps> = ({
       const osc2 = ctx.createOscillator();
       const gain = ctx.createGain();
 
-      osc1.frequency.setValueAtTime(440, ctx.currentTime); // A4
-      osc2.frequency.setValueAtTime(480, ctx.currentTime); 
+      osc1.frequency.setValueAtTime(440, ctx.currentTime);
+      osc2.frequency.setValueAtTime(480, ctx.currentTime);
       
       osc1.connect(gain);
       osc2.connect(gain);
       gain.connect(ctx.destination);
 
-      // Ringtone pattern: 2 seconds on, 4 seconds off
       const now = ctx.currentTime;
       gain.gain.setValueAtTime(0, now);
       
-      // Creating a loop of pulses
-      for (let i = 0; i < 10; i++) { // Ring for ~60 seconds max
-          const time = now + (i * 6);
-          gain.gain.setValueAtTime(0.1, time);
-          gain.gain.setValueAtTime(0.1, time + 2);
-          gain.gain.setValueAtTime(0, time + 2.1);
+      for (let i = 0; i < 10; i++) {
+        const time = now + (i * 6);
+        gain.gain.setValueAtTime(0.1, time);
+        gain.gain.setValueAtTime(0.1, time + 2);
+        gain.gain.setValueAtTime(0, time + 2.1);
       }
 
       osc1.start();
       osc2.start();
-
-      ringtoneOscillatorsRef.current = [osc1, osc2, gain]; // Store to stop later
-
+      ringtoneOscillatorsRef.current = [osc1, osc2, gain];
     } catch (e) {
       console.warn("Failed to play ringtone", e);
     }
   };
 
   const stopRingtone = () => {
-      ringtoneOscillatorsRef.current.forEach(node => {
-          try {
-              node.stop && node.stop();
-              node.disconnect && node.disconnect();
-          } catch(e){}
-      });
-      ringtoneOscillatorsRef.current = [];
+    ringtoneOscillatorsRef.current.forEach(node => {
+      try {
+        node.stop && node.stop();
+        node.disconnect && node.disconnect();
+      } catch(e){}
+    });
+    ringtoneOscillatorsRef.current = [];
   };
 
   const handleDigit = (digit: string) => {
     if (callStatus === 'idle' || callStatus === 'ready') {
       playDTMFTone(digit);
       setNumber(prev => prev + digit);
-    } else if (activeCallRef.current && typeof activeCallRef.current.sendDigits === 'function') {
-      activeCallRef.current.sendDigits(digit);
+    } else if (callStatus === 'connected') {
+      sendDTMF(digit);
       playDTMFTone(digit);
     }
   };
@@ -322,224 +219,43 @@ const Dialer: React.FC<DialerProps> = ({
 
   const handleCall = async () => {
     if (!number) return;
-    setCallError(null);
 
     if (!selectedPhoneNumber) {
-      setCallError('Please select a phone number to call from.');
       return;
     }
 
-    // Check if Twilio is configured - HANDLED BY BACKEND NOW
-    // if (!isTwilioConfigured()) {
-    //   setCallError('Twilio is not configured. Please add your credentials in Settings.');
-    //   return;
-    // }
+    const toNumber = getFullNumber();
+    const fromNumber = selectedPhoneNumber.number;
+    
+    playRingtone();
+    await makeCall(toNumber, fromNumber, contactName);
+  };
 
-    setCallStatus('calling');
-    callStartTimeRef.current = new Date();
-
-    try {
-      const toNumber = getFullNumber();
-      const fromNumber = selectedPhoneNumber.number;
-
-      console.log(`Making call from ${fromNumber} to ${toNumber}...`);
-
-      // Try Voice SDK first if available
-      if (deviceRef.current && voiceSDKAvailable && voiceServerAvailable) {
-        
-        playRingtone(); // Play ringtone while connecting
-
-        const call = await deviceRef.current.connect({
-          params: {
-            To: toNumber,
-            callerId: fromNumber,
-          }
-        });
-
-        activeCallRef.current = call;
-
-        call.on('ringing', () => {
-          console.log('Call ringing');
-          setCallStatus('ringing');
-        });
-
-        call.on('accept', () => {
-          console.log('Call accepted/connected');
-          stopRingtone(); // Stop ringtone when connected
-          setCallStatus('connected');
-          setIsRecording(true);
-        });
-
-        call.on('disconnect', () => {
-          console.log('Call disconnected');
-          stopRingtone(); 
-          handleCallEnd();
-        });
-
-        call.on('cancel', () => {
-          console.log('Call cancelled');
-          stopRingtone();
-          handleCallEnd();
-        });
-
-        call.on('reject', () => {
-          console.log('Call rejected');
-          stopRingtone();
-          setCallError('Call was rejected');
-          handleCallEnd();
-        });
-
-        call.on('error', (error: any) => {
-          console.error('Call error:', error);
-          stopRingtone();
-          setCallError(`Call error: ${error.message}`);
-          handleCallEnd();
-        });
-
-        call.on('mute', (muted: boolean) => {
-          setIsMuted(muted);
-        });
-
-      } else {
-        // Fallback to REST API (no audio in browser)
-        console.log('Using REST API fallback (no browser audio)...');
-        playRingtone(); // Play fake ringtone for feedback
-
-        const twilioCall = await initiateTwilioCall(fromNumber, toNumber);
-        console.log('Twilio call initiated:', twilioCall);
-        setCurrentCallSid(twilioCall.sid);
-        setCallStatus('connected');
-        stopRingtone(); // Stop immediately as we mark it connected? Or wait? 
-        // For REST, 'connected' usually means 'queued'.
-        // But since we can't track ringing easily without webhook, let's stop it after a short delay or when status changes.
-        // Actually, initiateTwilioCall returns once Queued/InProgress.
-        
-        setIsRecording(true);
-      }
-
-    } catch (error) {
-      console.error('Failed to make call:', error);
-      stopRingtone();
-      setCallError(error instanceof Error ? error.message : 'Failed to make call');
-      setCallStatus(deviceReady ? 'ready' : 'idle');
-    }
+  const handleHangup = () => {
+    stopRingtone();
+    hangupCall();
   };
 
   const handleAcceptCall = async () => {
-    if (!incomingCall) return;
-    
-    try {
-        stopRingtone(); // Stop ringing
-        const fromNumber = incomingCall.parameters.From;
-        
-        // Update Dialer state to show this number
-        if (fromNumber) {
-            const matchingCountry = COUNTRIES.find(c => fromNumber.startsWith(c.dialCode));
-            if (matchingCountry) {
-                setSelectedCountry(matchingCountry);
-                setNumber(fromNumber.replace(matchingCountry.dialCode, '').replace(/^[\s-]/, ''));
-            } else {
-                setNumber(fromNumber);
-                // Keep default country if no match found, or maybe set to 'Unknown' logic if needed
-            }
-        }
-
-        await incomingCall.accept();
-        activeCallRef.current = incomingCall;
-        setIncomingCall(null);
-        setCallStatus('connected');
-        setIsRecording(true);
-        callStartTimeRef.current = new Date(); // Start timer
-        
-        // Setup listeners for this admitted call
-        incomingCall.on('disconnect', () => {
-            console.log('Call disconnected');
-            handleCallEnd();
-        });
-
-        incomingCall.on('error', (error: any) => {
-            console.error('Call error:', error);
-            setCallError(`Call error: ${error.message}`);
-            handleCallEnd();
-        });
-
-        incomingCall.on('mute', (muted: boolean) => {
-            setIsMuted(muted);
-        });
-
-    } catch (e: any) {
-        console.error("Failed to accept call", e);
-        setCallError("Failed to accept call");
-        setIncomingCall(null);
-        setCallStatus('ready');
-    }
+    stopRingtone();
+    await acceptIncomingCall();
   };
 
   const handleRejectCall = () => {
-      if (incomingCall) {
-          incomingCall.reject();
-          setIncomingCall(null);
-          setCallStatus('ready');
-          stopRingtone();
-      }
-  };
-
-  const handleCallEnd = () => {
-    stopRingtone(); // Ensure stopped
-    const finalDuration = duration;
-    const callSid = activeCallRef.current?.parameters?.CallSid || currentCallSid;
-
-    const log: CallLog = {
-      id: Math.random().toString(36).substr(2, 9),
-      contactId: 'unknown',
-      date: callStartTimeRef.current || new Date(),
-      durationSeconds: finalDuration,
-      type: 'outbound',
-      fromNumber: selectedPhoneNumber?.number,
-      fromCountry: selectedPhoneNumber?.country,
-      toNumber: getFullNumber(),
-      twilioCallSid: callSid,
-      transcript: finalDuration > 10 ? "Call recorded..." : undefined,
-    };
-
-    onCallEnd(log);
-
-    setDuration(0);
-    setIsRecording(false);
-    setIsMuted(false);
-    activeCallRef.current = null;
-    callStartTimeRef.current = null;
-    setCurrentCallSid(null);
-    setCallStatus(deviceReady ? 'ready' : 'idle');
-  };
-
-  const handleHangup = async () => {
-    setCallStatus('disconnecting');
     stopRingtone();
-
-    // If using Voice SDK, disconnect the active call
-    if (activeCallRef.current && typeof activeCallRef.current.disconnect === 'function') {
-      activeCallRef.current.disconnect();
-    } else if (currentCallSid) {
-      // If using REST API mode, terminate via API
-      try {
-        await terminateTwilioCall(currentCallSid);
-      } catch (error) {
-        console.error('Failed to terminate call:', error);
-      }
-      handleCallEnd();
-    } else {
-      handleCallEnd();
-    }
+    rejectIncomingCall();
   };
 
   const handleMuteToggle = () => {
-    if (activeCallRef.current && typeof activeCallRef.current.mute === 'function') {
-      const newMuteState = !isMuted;
-      activeCallRef.current.mute(newMuteState);
-      setIsMuted(newMuteState);
-    }
+    muteToggle();
   };
+
+  // Stop ringtone when call connects or ends
+  useEffect(() => {
+    if (callStatus === 'connected' || callStatus === 'idle' || callStatus === 'ready') {
+      stopRingtone();
+    }
+  }, [callStatus]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -599,7 +315,6 @@ const Dialer: React.FC<DialerProps> = ({
     return (
       <div className="h-full flex flex-col items-center justify-between py-12 bg-neutral-900 text-white rounded-3xl shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-neutral-900 to-black z-0"></div>
-        {/* Animated Background Pulse */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-green-600 rounded-full blur-[120px] opacity-20 animate-pulse pointer-events-none"></div>
 
         <div className="z-10 flex flex-col items-center mt-12 space-y-4">
@@ -607,30 +322,30 @@ const Dialer: React.FC<DialerProps> = ({
             <PhoneIncoming className="w-16 h-16 text-green-500" />
           </div>
           <h2 className="text-3xl font-bold tracking-tight">Incoming Call</h2>
-          <p className="text-xl text-white font-medium">{incomingCall.parameters.From}</p>
+          <p className="text-xl text-white font-medium">{incomingCall.parameters?.From || 'Unknown'}</p>
           <p className="text-neutral-400">RedLine CRM</p>
         </div>
 
         <div className="z-10 w-full max-w-md px-8 mb-8 flex items-center justify-center gap-8">
-            <button
+          <button
             onClick={handleRejectCall}
             className="flex flex-col items-center gap-2 group"
-            >
+          >
             <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg shadow-red-900/50 group-hover:bg-red-500 transition-all active:scale-95">
-                <PhoneOff className="w-8 h-8 text-white" />
+              <PhoneOff className="w-8 h-8 text-white" />
             </div>
             <span className="text-sm font-medium text-red-500">Decline</span>
-            </button>
+          </button>
 
-            <button
+          <button
             onClick={handleAcceptCall}
             className="flex flex-col items-center gap-2 group"
-            >
+          >
             <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center shadow-lg shadow-green-900/50 group-hover:bg-green-500 transition-all active:scale-95 animate-pulse">
-                <Phone className="w-8 h-8 text-white" />
+              <Phone className="w-8 h-8 text-white" />
             </div>
             <span className="text-sm font-medium text-green-500">Answer</span>
-            </button>
+          </button>
         </div>
       </div>
     );
@@ -657,14 +372,14 @@ const Dialer: React.FC<DialerProps> = ({
             {getStatusDisplay()}
           </p>
 
-          {callStatus === 'connected' && voiceSDKAvailable && voiceServerAvailable && (
+          {callStatus === 'connected' && voiceSDKAvailable && (
             <div className="flex items-center gap-2 px-3 py-1 bg-green-900/30 border border-green-900/50 rounded-full">
               <Volume2 className="w-4 h-4 text-green-400" />
               <span className="text-xs text-green-400 font-semibold uppercase tracking-wider">Audio Active</span>
             </div>
           )}
 
-          {callStatus === 'connected' && (!voiceSDKAvailable || !voiceServerAvailable) && (
+          {callStatus === 'connected' && !voiceSDKAvailable && (
             <div className="flex items-center gap-2 px-3 py-1 bg-amber-900/30 border border-amber-900/50 rounded-full">
               <AlertCircle className="w-4 h-4 text-amber-400" />
               <span className="text-xs text-amber-400 font-semibold">REST API Mode (No Audio)</span>
@@ -709,48 +424,6 @@ const Dialer: React.FC<DialerProps> = ({
             <PhoneOff className="w-6 h-6" />
             <span className="text-lg font-bold">End Call</span>
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Incoming Call Overlay
-  if (incomingCall) {
-    return (
-      <div className="h-full flex flex-col items-center justify-between py-12 bg-neutral-900 text-white rounded-3xl shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-neutral-900 to-black z-0"></div>
-        {/* Animated Background Pulse */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-green-600 rounded-full blur-[120px] opacity-20 animate-pulse pointer-events-none"></div>
-
-        <div className="z-10 flex flex-col items-center mt-12 space-y-4">
-          <div className="w-32 h-32 bg-neutral-800 rounded-full flex items-center justify-center border-4 border-neutral-700 shadow-xl animate-bounce">
-            <PhoneIncoming className="w-16 h-16 text-green-500" />
-          </div>
-          <h2 className="text-3xl font-bold tracking-tight">Incoming Call</h2>
-          <p className="text-xl text-white font-medium">{incomingCall.parameters.From}</p>
-          <p className="text-neutral-400">RedLine CRM</p>
-        </div>
-
-        <div className="z-10 w-full max-w-md px-8 mb-8 flex items-center justify-center gap-8">
-            <button
-            onClick={handleRejectCall}
-            className="flex flex-col items-center gap-2 group"
-            >
-            <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg shadow-red-900/50 group-hover:bg-red-500 transition-all active:scale-95">
-                <PhoneOff className="w-8 h-8 text-white" />
-            </div>
-            <span className="text-sm font-medium text-red-500">Decline</span>
-            </button>
-
-            <button
-            onClick={handleAcceptCall}
-            className="flex flex-col items-center gap-2 group"
-            >
-            <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center shadow-lg shadow-green-900/50 group-hover:bg-green-500 transition-all active:scale-95 animate-pulse">
-                <Phone className="w-8 h-8 text-white" />
-            </div>
-            <span className="text-sm font-medium text-green-500">Answer</span>
-            </button>
         </div>
       </div>
     );
@@ -951,7 +624,7 @@ const Dialer: React.FC<DialerProps> = ({
               <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <span>{callError}</span>
-                <button onClick={() => setCallError(null)} className="ml-auto text-red-400 hover:text-red-600">×</button>
+                <button onClick={() => clearError()} className="ml-auto text-red-400 hover:text-red-600">×</button>
               </div>
             )}
 
@@ -973,4 +646,3 @@ const Dialer: React.FC<DialerProps> = ({
 };
 
 export default Dialer;
-
