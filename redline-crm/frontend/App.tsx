@@ -173,6 +173,7 @@ export default function App() {
 
         async function init() {
             await loadData();
+            await loadEmailSettings(); // Load email settings after auth
             setIsDbReady(true);
 
             // Auto-sync phone numbers from Twilio via Backend
@@ -640,11 +641,6 @@ export default function App() {
             setIsTestingConnection(false);
         }
     };
-
-    // Load email settings on mount
-    useEffect(() => {
-        loadEmailSettings();
-    }, []);
 
     // Lock screen handlers
     const handleLockScreen = () => {
