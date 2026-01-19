@@ -66,10 +66,15 @@ export const deletePhoneNumber = async (req: Request, res: Response) => {
   }
 };
 
-export const syncPhoneNumbers = async (req: Request, res: Response) => {
+export const syncPhoneNumbers = async (_req: Request, res: Response) => {
   try {
-    const numbers = await phoneNumberService.syncWithTwilio(req.userId!);
-    return res.json({ success: true, data: numbers, message: `Synced ${numbers.length} numbers` });
+    // Sync disabled: We now use centralized TWILIO_PHONE_NUMBER from environment
+    // No need to sync to database since all users share the same number
+    return res.json({ 
+      success: true, 
+      data: [], 
+      message: 'Sync disabled - using centralized phone number from environment' 
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, error: 'Failed to sync phone numbers' });
