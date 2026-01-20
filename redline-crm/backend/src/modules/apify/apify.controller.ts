@@ -110,22 +110,35 @@ export const apifyController = {
    * Import results as leads
    */
   async importAsLeads(req: Request, res: Response) {
+    console.log('--- APIFY IMPORT START ---');
     try {
       const { runId } = req.params;
       const { folderId } = req.body;
       const limit = parseInt(req.query.limit as string) || 100;
+      const userId = req.userId;
       
-      console.log(`Starting import for run ${runId} to folder ${folderId || 'root'}`);
+      console.log('Params:', { runId, limit, folderId, userId });
+
+      if (!userId) {
+        console.error('Import failed: req.userId is missing');
+        return res.status(401).json({ success: false, error: 'User not authenticated (req.userId missing)' });
+      }
       
-      // Fetch results
+      console.log(`Step 1: Fetching results for run ${runId}`);
       const results = await apifyService.getRunResults(runId, limit);
-      console.log(`Fetched ${results.length} results from Apify`);
+      console.log(`Step 2: Fetched ${results?.length || 0} results`);
       
-      const leads = apifyService.transformToLeads(results, runId, req.userId!, folderId);
+      if (!Array.isArray(results)) {
+        throw new Error('Apify results are not an array');
+      }
+
+      console.log('Step 3: Transforming to leads');
+      const leads = apifyService.transformToLeads(results, runId, userId, folderId);
+      console.log(`Step 4: Transformed into ${leads.length} lead objects`);
       
-      // Bulk insert
-      const result = await leadService.bulkCreate(leads, req.userId!);
-      console.log(`Import complete: ${result.inserted} inserted, ${result.duplicates} duplicates`);
+      console.log('Step 5: Calling bulkCreate');
+      const result = await leadService.bulkCreate(leads, userId);
+      console.log('Step 6: Import finished successfully', result);
       
       return res.json({ 
         success: true, 
@@ -136,12 +149,21 @@ export const apifyController = {
         }
       });
     } catch (error: any) {
-      console.error('Apify import error:', error);
+      console.error('--- APIFY IMPORT ERROR ---');
+      console.error('Message:', error.message);
+      console.error('Stack:', error.stack);
+      if (error.response) {
+        console.error('Response Data:', error.response.data);
+      }
+      
       return res.status(500).json({ 
         success: false, 
-        error: error.message,
-        details: error.response?.data || error.stack
+        error: error.message || 'Internal server error during import',
+        details: error.stack,
+        apifyError: error.response?.data
       });
+    } finally {
+      console.log('--- APIFY IMPORT END ---');
     }
   },
 

@@ -282,7 +282,13 @@ const LeadsManager: React.FC = () => {
       
       alert(`Imported ${result.inserted} leads! (${result.duplicates} duplicates skipped)`);
     } catch (error: any) {
-      setScraperError(error.message);
+      console.error('Import Error Full Details:', error);
+      const backendError = error.response?.data?.error;
+      const backendDetails = error.response?.data?.details;
+      setScraperError(backendError || error.message);
+      if (backendDetails) {
+        console.error('Backend Detail Trace:', backendDetails);
+      }
     } finally {
       setImporting(false);
     }

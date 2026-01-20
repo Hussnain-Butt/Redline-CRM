@@ -54,6 +54,7 @@ export const leadService = {
   },
 
   async bulkCreate(leads: CreateLeadDto[], userId: string): Promise<{ inserted: number; duplicates: number }> {
+    console.log(`bulkCreate: Processing ${leads.length} leads for user ${userId}`);
     let inserted = 0;
     let duplicates = 0;
     const toInsert: any[] = [];
@@ -70,16 +71,26 @@ export const leadService = {
       toInsert.push({ ...leadData, userId });
     }
 
+    console.log(`bulkCreate: Found ${duplicates} duplicates, attempting to insert ${toInsert.length} new leads`);
+
     if (toInsert.length > 0) {
       try {
         const result = await Lead.insertMany(toInsert, { ordered: false });
         inserted = result.length;
+        console.log(`bulkCreate: Successfully inserted ${inserted} leads`);
       } catch (error: any) {
-        // If some succeeded and some failed
+        // If some succeeded and some failed (e.g. unique constraint violation)
         if (error.insertedDocs) {
           inserted = error.insertedDocs.length;
         }
-        console.error('Bulk create partially failed:', error.message);
+        console.error('bulkCreate: Partial or full failure:', error.message);
+        // We log the error but don't re-throw to allow 200 with partial success,
+        // unless we want to treat it as a full failure. 
+        // For debugging, let's re-throw if it's not just a duplicate error.
+        if (!error.message.includes('duplicate key')) {
+          console.error('Full bulkCreate error:', error);
+          throw error;
+        }
       }
     }
 
