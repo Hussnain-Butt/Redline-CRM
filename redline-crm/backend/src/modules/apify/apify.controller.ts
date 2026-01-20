@@ -112,14 +112,20 @@ export const apifyController = {
   async importAsLeads(req: Request, res: Response) {
     try {
       const { runId } = req.params;
+      const { folderId } = req.body;
       const limit = parseInt(req.query.limit as string) || 100;
+      
+      console.log(`Starting import for run ${runId} to folder ${folderId || 'root'}`);
       
       // Fetch results
       const results = await apifyService.getRunResults(runId, limit);
-      const leads = apifyService.transformToLeads(results, runId, req.userId!);
+      console.log(`Fetched ${results.length} results from Apify`);
+      
+      const leads = apifyService.transformToLeads(results, runId, req.userId!, folderId);
       
       // Bulk insert
       const result = await leadService.bulkCreate(leads, req.userId!);
+      console.log(`Import complete: ${result.inserted} inserted, ${result.duplicates} duplicates`);
       
       return res.json({ 
         success: true, 
@@ -130,7 +136,12 @@ export const apifyController = {
         }
       });
     } catch (error: any) {
-      return res.status(500).json({ success: false, error: error.message });
+      console.error('Apify import error:', error);
+      return res.status(500).json({ 
+        success: false, 
+        error: error.message,
+        details: error.response?.data || error.stack
+      });
     }
   },
 

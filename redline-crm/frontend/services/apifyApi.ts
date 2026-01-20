@@ -64,8 +64,8 @@ export const apifyApi = {
   /**
    * Import results as leads
    */
-  async importAsLeads(runId: string, limit: number = 100): Promise<ImportResult> {
-    const { data } = await apiClient.post(`/apify/runs/${runId}/import`, null, { params: { limit } });
+  async importAsLeads(runId: string, limit: number = 100, folderId?: string): Promise<ImportResult> {
+    const { data } = await apiClient.post(`/apify/runs/${runId}/import`, { folderId }, { params: { limit } });
     return data.data;
   },
 

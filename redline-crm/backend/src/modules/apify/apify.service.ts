@@ -150,7 +150,7 @@ export const apifyService = {
   /**
    * Transform Google Maps results to Lead format
    */
-  transformToLeads(results: GoogleMapsResult[], runId: string, userId: string): any[] {
+  transformToLeads(results: GoogleMapsResult[], runId: string, userId: string, folderId?: string): any[] {
     return results.map(item => ({
       userId,
       name: item.title || 'Unknown',
@@ -165,6 +165,7 @@ export const apifyService = {
       source: 'google-maps',
       apifyActorId: GOOGLE_MAPS_ACTOR_ID,
       apifyRunId: runId,
+      folderId: folderId || undefined,
       rawData: item,
       status: 'new',
     }));

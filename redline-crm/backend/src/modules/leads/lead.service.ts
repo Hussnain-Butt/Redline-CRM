@@ -56,6 +56,7 @@ export const leadService = {
   async bulkCreate(leads: CreateLeadDto[], userId: string): Promise<{ inserted: number; duplicates: number }> {
     let inserted = 0;
     let duplicates = 0;
+    const toInsert: any[] = [];
 
     for (const leadData of leads) {
       // Check for duplicate by phone (if exists) within user's leads
@@ -66,9 +67,20 @@ export const leadService = {
           continue;
         }
       }
-      
-      await Lead.create({ ...leadData, userId });
-      inserted++;
+      toInsert.push({ ...leadData, userId });
+    }
+
+    if (toInsert.length > 0) {
+      try {
+        const result = await Lead.insertMany(toInsert, { ordered: false });
+        inserted = result.length;
+      } catch (error: any) {
+        // If some succeeded and some failed
+        if (error.insertedDocs) {
+          inserted = error.insertedDocs.length;
+        }
+        console.error('Bulk create partially failed:', error.message);
+      }
     }
 
     return { inserted, duplicates };

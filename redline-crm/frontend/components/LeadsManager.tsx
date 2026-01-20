@@ -268,10 +268,9 @@ const LeadsManager: React.FC = () => {
     try {
       setImporting(true);
       // First import leads
-      const result = await apifyApi.importAsLeads(currentRun.id, maxResults);
+      const result = await apifyApi.importAsLeads(currentRun.id, maxResults, scraperFolderId || undefined);
       
-      // Then update them with folderId
-      // For now, we'll just refresh and notify user
+      // Refresh and notify user
       await loadData();
       
       setScraperOpen(false);
