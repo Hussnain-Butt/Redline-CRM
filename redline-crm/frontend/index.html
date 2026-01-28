@@ -38,6 +38,96 @@
   }
 }
 </script>
+
+  <!-- Global Error Suppression for Browser Extension Interference -->
+  <script>
+    (function() {
+      'use strict';
+      
+      // 1. Suppress console.error for known extension errors
+      const originalError = console.error;
+      console.error = function(...args) {
+        const errorMessage = args.join(' ');
+        
+        // List of known browser extension error patterns to suppress
+        const extensionErrorPatterns = [
+          'Could not establish connection',
+          'Receiving end does not exist',
+          'Extension context invalidated',
+          'chrome.runtime.sendMessage',
+          'chrome-extension://',
+          'moz-extension://'
+        ];
+        
+        // Check if error matches any extension pattern
+        const isExtensionError = extensionErrorPatterns.some(pattern => 
+          errorMessage.includes(pattern)
+        );
+        
+        // Only log if it's not an extension error
+        if (!isExtensionError) {
+          originalError.apply(console, args);
+        }
+      };
+      
+      // 2. Suppress unhandled promise rejections from extensions
+      window.addEventListener('unhandledrejection', function(event) {
+        const errorMessage = event.reason?.message || event.reason?.toString() || '';
+        
+        // Extension error patterns
+        const extensionErrorPatterns = [
+          'Could not establish connection',
+          'Receiving end does not exist',
+          'Extension context invalidated',
+          'chrome.runtime',
+          'chrome-extension'
+        ];
+        
+        // Check if this is an extension error
+        const isExtensionError = extensionErrorPatterns.some(pattern => 
+          errorMessage.includes(pattern)
+        );
+        
+        if (isExtensionError) {
+          // Prevent the error from appearing in console
+          event.preventDefault();
+          return;
+        }
+      });
+      
+      // 3. Suppress window.onerror for extension errors
+      const originalOnError = window.onerror;
+      window.onerror = function(message, source, lineno, colno, error) {
+        const errorMessage = message?.toString() || '';
+        const errorSource = source?.toString() || '';
+        
+        // Check if error is from an extension
+        const isExtensionError = 
+          errorMessage.includes('Could not establish connection') ||
+          errorMessage.includes('Receiving end does not exist') ||
+          errorSource.includes('chrome-extension://') ||
+          errorSource.includes('moz-extension://');
+        
+        if (isExtensionError) {
+          // Suppress the error
+          return true;
+        }
+        
+        // Call original handler for non-extension errors
+        if (originalOnError) {
+          return originalOnError(message, source, lineno, colno, error);
+        }
+        return false;
+      };
+      
+      // 4. Log one-time message about extension interference (dev mode only)
+      if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
+        console.log('%c🛡️ RedLine CRM - Extension Error Suppression Active', 'color: #10b981; font-weight: bold;');
+        console.log('%cBrowser extension errors are being filtered to prevent console noise.', 'color: #6b7280;');
+      }
+    })();
+  </script>
+
 <link rel="stylesheet" href="/index.css">
 </head>
   <body class="bg-neutral-50 text-neutral-900 font-sans antialiased">
