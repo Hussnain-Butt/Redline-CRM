@@ -154,9 +154,14 @@ export class CallService {
     if (isClientCall && To) {
       // Outbound call from Browser -> Phone
       console.log(`📤 Outbound call to: ${To}`);
+      console.log(`🆔 Using Caller ID: '${env.TWILIO_PHONE_NUMBER}'`);
       
+      if (!env.TWILIO_PHONE_NUMBER) {
+        console.error('❌ CRITICAL: TWILIO_PHONE_NUMBER is undefined in environment variables!');
+      }
+
       const dial = response.dial({
-        callerId: env.TWILIO_PHONE_NUMBER,
+        callerId: env.TWILIO_PHONE_NUMBER || '+18392744891', // Fallback for debugging
         timeout: 30,
         timeLimit: 14400,
         record: 'record-from-answer',
