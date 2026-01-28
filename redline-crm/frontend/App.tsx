@@ -1086,7 +1086,12 @@ export default function App() {
                             activeNumber={activeNumber}
                             dialerContactName={dialerContactName}
                             phoneNumbers={phoneNumbers.filter(p => p.canCall)}
-                            selectedPhoneNumber={selectedPhoneNumber}
+                            selectedPhoneNumber={
+                              // Ensure selected phone number is from the canCall list
+                              selectedPhoneNumber?.canCall 
+                                ? selectedPhoneNumber 
+                                : (phoneNumbers.find(p => p.canCall && p.isDefault) || phoneNumbers.find(p => p.canCall) || null)
+                            }
                             onPhoneNumberSelect={setSelectedPhoneNumber}
                             onCallEnd={handleCallEnd}
                             callHistory={callLogs}

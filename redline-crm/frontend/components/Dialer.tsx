@@ -221,14 +221,31 @@ const Dialer: React.FC<DialerProps> = ({
   };
 
   const handleCall = async () => {
-    if (!number) return;
+    console.log('🔘 Call button clicked');
+    console.log('📋 Current state:', {
+      number,
+      selectedPhoneNumber,
+      phoneNumbers,
+      deviceReady,
+      callStatus,
+      voiceSDKAvailable
+    });
+
+    if (!number) {
+      console.warn('❌ No number entered');
+      return;
+    }
 
     if (!selectedPhoneNumber) {
+      console.error('❌ No phone number selected for calling');
+      console.error('Available phone numbers:', phoneNumbers);
       return;
     }
 
     const toNumber = getFullNumber();
     const fromNumber = selectedPhoneNumber.number;
+    
+    console.log(`📞 Initiating call: ${fromNumber} → ${toNumber}`);
     
     // Only use contactName if we're calling the original number we navigated here with
     // This prevents stale contact names when user dials a different number
