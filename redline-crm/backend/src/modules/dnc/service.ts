@@ -362,24 +362,27 @@ export class DNCService {
 
   /**
    * Normalize phone number to E.164 format
-   * Handles various input formats:
+   * Handles various input formats including international:
    * - (202) 555-1234 -> +12025551234
    * - 202-555-1234 -> +12025551234
-   * - 2025551234 -> +12025551234
+   * - 2025551234 -> +12025551234 (assumes US)
    * - +1 202 555 1234 -> +12025551234
+   * - +923195051869 -> +923195051869 (Pakistan)
+   * - 923195051869 -> +923195051869 (International)
    */
   private normalizePhoneNumber(phoneNumber: string): string {
     // Remove all non-digit characters
     let cleaned = phoneNumber.replace(/\D/g, '');
 
-    // Add country code if missing (assume US +1)
+    // Handle different cases
     if (cleaned.length === 10) {
+      // 10 digits without country code - assume US (+1)
       cleaned = '1' + cleaned;
     }
 
-    // Validate length
-    if (cleaned.length !== 11 || !cleaned.startsWith('1')) {
-      throw new Error(`Invalid US phone number format: ${phoneNumber}`);
+    // Validate minimum length (at least 10 digits for any country)
+    if (cleaned.length < 10 || cleaned.length > 15) {
+      throw new Error(`Invalid phone number format: ${phoneNumber}`);
     }
 
     // Return E.164 format
