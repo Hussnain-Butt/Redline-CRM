@@ -154,14 +154,30 @@ export class CallService {
     if (isClientCall && To) {
       // Outbound call from Browser -> Phone
       console.log(`📤 Outbound call to: ${To}`);
-      console.log(`🆔 Using Caller ID: '${env.TWILIO_PHONE_NUMBER}'`);
       
-      if (!env.TWILIO_PHONE_NUMBER) {
-        console.error('❌ CRITICAL: TWILIO_PHONE_NUMBER is undefined in environment variables!');
+      // Sanitize and validate Caller ID
+      let callerId = env.TWILIO_PHONE_NUMBER;
+      
+      console.log(`🆔 Raw Env Caller ID: '${callerId}'`);
+
+      // Fix common typos (!! instead of +) or missing +
+      if (callerId) {
+        if (callerId.startsWith('!!')) callerId = callerId.replace('!!', '+');
+        if (!callerId.startsWith('+')) callerId = '+' + callerId;
+        // Remove any other invalid chars
+        callerId = callerId.replace(/[^0-9+]/g, '');
       }
 
+      // Hard fallback if env var is missing or empty
+      if (!callerId || callerId.length < 10) {
+         console.warn('⚠️ Invalid Env Caller ID, using fallback');
+         callerId = '+18392744891';
+      }
+
+      console.log(`✅ Using Final Caller ID: '${callerId}'`);
+
       const dial = response.dial({
-        callerId: env.TWILIO_PHONE_NUMBER || '+18392744891', // Fallback for debugging
+        callerId: callerId,
         timeout: 30,
         timeLimit: 14400,
         record: 'record-from-answer',
