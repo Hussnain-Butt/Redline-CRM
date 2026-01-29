@@ -138,12 +138,17 @@ export class CallService {
   /**
    * Handle Twilio Voice Webhook (TwiML)
    * This is called by Twilio when a call is made/received
-   */
   handleVoiceWebhook(From: string, To: string): string {
     const VoiceResponse = Twilio.twiml.VoiceResponse;
     const response = new VoiceResponse();
-
-    console.log(`📞 Handling webhook: From ${From} to ${To}`);
+    console.log(`📞 [Webhook] Start processing call: From=${From} To=${To}`);
+    
+    // Ensure From and To are present
+    if (!From) {
+       console.error('❌ [Webhook] Missing "From" parameter');
+       response.say('System Error: Missing From parameter');
+       return response.toString();
+    }
 
     
     // Check if the call is initiated by a Twilio Client (browser)

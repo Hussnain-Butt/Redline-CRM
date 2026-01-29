@@ -66,7 +66,7 @@ app.use('/api/emails', requireAuth, emailRoutes);
 app.use('/api/ai', requireAuth, aiRoutes);
 
 // Call Module
-app.use('/api/calls', requireAuth, callRoutes);
+app.use('/api/calls', callRoutes);
 
 // Settings Module
 app.use('/api/settings', requireAuth, settingsRoutes);

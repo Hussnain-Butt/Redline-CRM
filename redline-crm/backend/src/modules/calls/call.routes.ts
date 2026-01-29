@@ -19,40 +19,43 @@ import {
   downloadRecording,
 } from './call.controller.js';
 
+import { requireAuth } from '../../middleware/authMiddleware.js';
+
 const router = Router();
 
 // ==================== SPECIAL ROUTES ====================
 
-// GET /api/calls/token - Generate Twilio Token
-router.get('/token', getVoiceToken);
+// GET /api/calls/token - Generate Twilio Token (PROTECTED)
+router.get('/token', requireAuth, getVoiceToken);
 
-// POST /api/calls/voice - Twilio Webhook (Public usually, but here we keep it structured)
+// POST /api/calls/voice - Twilio Webhook (PUBLIC)
 // Note: Twilio sends form-encoded data usually, verify Middleware handles it (app.ts does)
 router.post('/voice', handleVoiceWebhook);
 
-// POST /api/calls/status - Twilio Status Webhook
+// POST /api/calls/status - Twilio Status Webhook (PUBLIC)
 router.post('/status', handleCallStatus);
 
-// POST /api/calls/recording-status - Twilio Recording Status Webhook
+// POST /api/calls/recording-status - Twilio Recording Status Webhook (PUBLIC)
 router.post('/recording-status', handleRecordingStatus);
 
-// GET /api/calls/recording/:recordingSid - Download Recording (Proxy)
-router.get('/recording/:recordingSid', downloadRecording);
+// GET /api/calls/recording/:recordingSid - Download Recording (Proxy) (PROTECTED)
+router.get('/recording/:recordingSid', requireAuth, downloadRecording);
 
 // ==================== CRUD ROUTES ====================
 
-// GET /api/calls - Get all calls
-router.get('/', validateRequest(callQuerySchema, 'query'), getCalls);
+// GET /api/calls - Get all calls (PROTECTED)
+router.get('/', requireAuth, validateRequest(callQuerySchema, 'query'), getCalls);
 
-// POST /api/calls - Create call log (with DNC filtering)
-router.post('/', dncFilterMiddleware, validateRequest(createCallSchema), createCall);
+// POST /api/calls - Create call log (PROTECTED)
+router.post('/', requireAuth, dncFilterMiddleware, validateRequest(createCallSchema), createCall);
 
-// GET /api/calls/:id - Get call by ID
-router.get('/:id', validateRequest(idParamSchema, 'params'), getCallById);
+// GET /api/calls/:id - Get call by ID (PROTECTED)
+router.get('/:id', requireAuth, validateRequest(idParamSchema, 'params'), getCallById);
 
-// PUT /api/calls/:id - Update call log
+// PUT /api/calls/:id - Update call log (PROTECTED)
 router.put(
   '/:id',
+  requireAuth,
   validateRequest(idParamSchema, 'params'),
   validateRequest(updateCallSchema),
   updateCall
