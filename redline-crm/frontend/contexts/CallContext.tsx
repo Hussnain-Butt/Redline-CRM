@@ -142,8 +142,29 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCallStatus('ready');
       });
 
-      device.on('error', (error: any) => {
+      device.on('error', async (error: any) => {
         console.error('❌ Twilio Device error:', error);
+        
+        // Handle expired token - auto reinitialize
+        if (error.code === 20104 || error.message?.includes('AccessTokenExpired')) {
+          console.log('🔄 Token expired, reinitializing device...');
+          setCallError('Session expired, reconnecting...');
+          
+          // Destroy old device
+          try {
+            device.destroy();
+            deviceRef.current = null;
+          } catch (e) {
+            console.warn('Error destroying old device:', e);
+          }
+          
+          // Wait a moment then reinitialize
+          setTimeout(() => {
+            initializeDevice();
+          }, 1000);
+          return;
+        }
+        
         setCallError(`Device error: ${error.message}`);
         setDeviceReady(false);
       });
